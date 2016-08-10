@@ -1,1 +1,16 @@
+Git
+
 https://confluence.atlassian.com/bitbucketserver/basic-git-commands-776639767.html
+
+
+
+
+MVC on iOS
+
+https://www.raywenderlich.com/46988/ios-design-patterns
+
+https://medium.com/ios-os-x-development/ios-architecture-patterns-ecba4c38de52#.5gd4o0os5
+
+http://codewithchris.com/how-to-make-iphone-apps-mvc-one-pattern-to-rule-them-all/
+
+https://www.smashingmagazine.com/2016/05/better-architecture-for-ios-apps-model-view-controller-pattern/
