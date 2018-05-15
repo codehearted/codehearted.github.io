@@ -1,0 +1,62 @@
+
+<html>
+<head>
+<title>CodeheartedPanel</title>
+
+<script language = "Javascript" src = "src/dynapi.js"></script>
+<script language = "Javascript">
+
+/* *********************************************************
+** DynAPI include files
+** ****************************************************** */
+
+// include all dynapi/api/ and dynapi/event/ files 
+DynAPI.setLibraryPath("src/lib/"); 
+DynAPI.include("dynapi.api.*");
+DynAPI.include("dynapi.event.*");
+DynAPI.include("codehearted.dWindow.js");
+DynAPI.include("codehearted.dWindowManager.js");
+
+/* *********************************************************
+** DynAPI.onLoad method
+** ****************************************************** */
+
+DynAPI.onLoad = function() { 
+
+  
+  // get window manager
+  manager = new dWindowManager()
+  
+  
+  manager.add("shader - 95%",470,400,321,250,
+		"<font color=\"#ccc\">This should darken anything below it.<br/><a href=\"./index.html\">Go Back to Main Demo Page</a></font>",
+		1,"images/black-seethru-95.png")
+
+  
+  manager.add("shader - 45%",20,120,321,250,
+		"<font color=\"#ccc\">For Best Results: click once to bring window to front, then click again on the window frame, hold it for a moment, and then drag. This is alpha quality code.<br/></font>",
+		1,"images/black-seethru-45.png")
+
+
+  manager.add("Art: boxtest3",370,70,421,350," ",1,"images/boxtest3.jpg")
+	manager.add("Art: boxtest27",400,450,271,150," ",1,"images/boxtest27.jpg")
+  	
+  DynAPI.document.addChild(manager);
+
+
+
+}
+
+</script>
+
+</head>
+<body background="images/st_bg.jpg">
+</body>
+</html>
+
+
+
+
+
+
+
