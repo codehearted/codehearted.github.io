@@ -28,9 +28,7 @@ const state = {
   },
   matchHoldMs: 0,
   lastFrameTs: null,
-  lastWrist: null,
-  stream: null,
-  processing: false
+  lastWrist: null
 };
 
 const els = {
@@ -333,20 +331,6 @@ async function start() {
   els.startBtn.disabled = true;
   setCameraNote('Starting camera…');
 
-  if (!window.isSecureContext) {
-    setCameraNote('Camera requires HTTPS (or localhost). This page is not in a secure context.');
-    els.statusText.textContent = 'Not a secure context.';
-    els.startBtn.disabled = false;
-    return;
-  }
-
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    setCameraNote('Camera API not available in this browser.');
-    els.statusText.textContent = 'navigator.mediaDevices.getUserMedia is unavailable.';
-    els.startBtn.disabled = false;
-    return;
-  }
-
   const hands = new Hands({
     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`
   });
@@ -428,56 +412,18 @@ async function start() {
     }
   });
 
+  const camera = new Camera(els.video, {
+    onFrame: async () => {
+      await hands.send({ image: els.video });
+    },
+    width: 640,
+    height: 480
+  });
+
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        facingMode: 'user',
-        width: { ideal: 640 },
-        height: { ideal: 480 }
-      }
-    });
-
-    state.stream = stream;
-    els.video.srcObject = stream;
-
-    await new Promise((resolve) => {
-      if (els.video.readyState >= 1) {
-        resolve();
-        return;
-      }
-      els.video.onloadedmetadata = () => resolve();
-    });
-
-    await els.video.play();
-
+    await camera.start();
     setCameraNote('Camera running.');
     setMode(Mode.LEARN_YES);
-
-    if (!state.processing) {
-      state.processing = true;
-      let lastSendTs = 0;
-
-      const process = async () => {
-        if (!state.processing) return;
-
-        if (els.video.readyState >= 2) {
-          const now = performance.now();
-          if (now - lastSendTs >= 33) {
-            lastSendTs = now;
-            try {
-              await hands.send({ image: els.video });
-            } catch (e) {
-              els.statusText.textContent = String(e);
-            }
-          }
-        }
-
-        requestAnimationFrame(process);
-      };
-
-      requestAnimationFrame(process);
-    }
   } catch (err) {
     setCameraNote('Failed to start camera. Ensure you are using HTTPS (or localhost) and grant camera permissions.');
     els.statusText.textContent = String(err);
@@ -502,16 +448,6 @@ els.resetBtn.addEventListener('click', () => {
   state.score.correct = 0;
   state.score.wrong = 0;
   updateScoreUI();
-
-  state.processing = false;
-  if (state.stream) {
-    for (const track of state.stream.getTracks()) {
-      track.stop();
-    }
-    state.stream = null;
-  }
-  els.video.srcObject = null;
-
   setMode(Mode.INTRO);
 });
 
