@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SignQuest — Level 1 Prototype</title>
+    <link rel="stylesheet" href="./styles.css" />
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1620248357/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="brand">SignQuest</div>
+        <div class="sub">Level 1 Prototype — YES/NO</div>
+      </header>
+
+      <main class="main">
+        <section class="panel left">
+          <div class="card">
+            <div class="row">
+              <div>
+                <div class="title" id="modeTitle">Loading…</div>
+                <div class="hint" id="modeHint"></div>
+              </div>
+              <div class="toggles">
+                <label class="toggle">
+                  <input type="checkbox" id="captionsToggle" checked />
+                  <span>Captions</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="question" id="questionText"></div>
+
+            <div class="status" id="statusText"></div>
+
+            <div class="metrics">
+              <div class="metric">
+                <div class="metricLabel">Handshape</div>
+                <div class="meter"><div class="bar" id="barHandshape"></div></div>
+                <div class="badge" id="badgeHandshape">—</div>
+              </div>
+              <div class="metric">
+                <div class="metricLabel">Location</div>
+                <div class="meter"><div class="bar" id="barLocation"></div></div>
+                <div class="badge" id="badgeLocation">—</div>
+              </div>
+              <div class="metric">
+                <div class="metricLabel">Orientation</div>
+                <div class="meter"><div class="bar" id="barOrientation"></div></div>
+                <div class="badge" id="badgeOrientation">—</div>
+              </div>
+              <div class="metric">
+                <div class="metricLabel">Movement</div>
+                <div class="meter"><div class="bar" id="barMovement"></div></div>
+                <div class="badge" id="badgeMovement">—</div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button id="startBtn" class="btn primary">Start</button>
+              <button id="resetBtn" class="btn">Reset</button>
+            </div>
+
+            <div class="small" id="cameraNote"></div>
+          </div>
+
+          <div class="card">
+            <div class="row">
+              <div class="title">Score</div>
+              <div class="score">
+                <div class="scoreItem"><div class="scoreLabel">Streak</div><div class="scoreValue" id="streak">0</div></div>
+                <div class="scoreItem"><div class="scoreLabel">Correct</div><div class="scoreValue" id="correct">0</div></div>
+                <div class="scoreItem"><div class="scoreLabel">Wrong</div><div class="scoreValue" id="wrong">0</div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel right">
+          <div class="videoWrap">
+            <video id="video" playsinline></video>
+            <canvas id="overlay"></canvas>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="footnote">
+          Camera requires HTTPS (or localhost). This prototype uses MediaPipe Hands.
+        </div>
+      </footer>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
