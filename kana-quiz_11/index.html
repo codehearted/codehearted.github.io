@@ -57,7 +57,7 @@ body.quiz-active::before {
 /* ── GAME MODE ── */
 #game-mode { display: none; position: fixed; inset: 0; }
 #game-mode.active { display: block; }
-#game-canvas { width: 100%; height: 100%; display: block; }
+#game-canvas { width: 100vw; height: 100vh; display: block; position: absolute; top: 0; left: 0; }
 
 /* ── GAME HUD ── */
 #game-hud {
@@ -852,8 +852,11 @@ function showGame() {
   document.getElementById('back-btn').classList.add('visible');
   document.body.classList.remove('quiz-active');
   stopQuizSTT();
-  initGame();
-  startGame();
+  // Defer one frame so the canvas has layout dimensions before Three.js reads them
+  requestAnimationFrame(() => {
+    initGame();
+    startGame();
+  });
 }
 
 document.getElementById('pick-quiz').addEventListener('click', showQuiz);
@@ -1095,7 +1098,7 @@ function buildRecog() {
   r.onresult = e => {
     const alts = [];
     for (let i=0; i<e.results.length; i++) for (let j=0; j<e.results[i].length; j++) { const t=e.results[i][j].transcript.trim(); if(t) alts.push(t); }
-    if (alts.length) { r.stop(); handleFinalResult(alts); }
+    if (alts.length) { listening = false; r.stop(); handleFinalResult(alts); }
   };
   return r;
 }
@@ -1160,16 +1163,22 @@ const DIFF = {
 };
 
 function initGame() {
+  if (typeof THREE === 'undefined') {
+    setTimeout(initGame, 100); return; // Three.js not loaded yet
+  }
   const canvas = document.getElementById('game-canvas');
   if (renderer) { renderer.dispose(); }
+  // Use window dimensions — canvas may not have layout dimensions yet if just made visible
+  const W = canvas.clientWidth || window.innerWidth;
+  const H = canvas.clientHeight || window.innerHeight;
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x050608);
   scene.fog = new THREE.Fog(0x050608, 80, 220);
-  camera = new THREE.PerspectiveCamera(65, canvas.clientWidth / canvas.clientHeight, 0.1, 500);
+  camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 500);
   camera.position.set(0, 2, 0);
   camera.lookAt(0, 0, -50);
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  renderer.setSize(W, H);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   // Lighting
@@ -1508,7 +1517,7 @@ function startGameBrowserSTT() {
   r.onresult = e => {
     const alts = [];
     for (let i=0; i<e.results.length; i++) for (let j=0; j<e.results[i].length; j++) { const t=e.results[i][j].transcript.trim(); if(t) alts.push(t); }
-    if (alts.length) processGameSpeech(alts);
+    if (alts.length) { gameListeningFlag = false; r.stop(); processGameSpeech(alts); }
   };
   gameRecogInst = r;
   try { r.start(); } catch(err) {}
