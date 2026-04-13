@@ -1118,7 +1118,7 @@ function buildRecog() {
   const r = new SR();
   r.lang = 'ja-JP'; r.interimResults = false; r.maxAlternatives = 8; r.continuous = false;
   r.onstart = () => { listening = true; resultHandled = false; micBtn.className = 'listening'; transcEl.textContent = '…'; if(transcriptClearTimer) clearTimeout(transcriptClearTimer); errorEl.textContent = ''; feedEl.textContent = ''; feedEl.className = ''; };
-  r.onend = () => { listening = false; if (micBtn.className === 'listening') micBtn.className = ''; if (autoStartEnabled && appMode === 'quiz') setTimeout(tryAutoStart, 100); };
+  r.onend = () => { listening = false; if (micBtn.className === 'listening') micBtn.className = ''; };
   r.onerror = e => {
     listening = false; micBtn.className = ''; transcEl.textContent = '';
     if (e.error === 'not-allowed') errorEl.textContent = 'Mic access denied.';
@@ -1178,338 +1178,419 @@ document.querySelectorAll('.stt-btn').forEach(btn => {
 // THREE.JS COMBAT MODE
 // ═══════════════════════════════════════════════════════════
 let scene, camera, renderer, gameRunning = false, gameAnimId = null;
-let enemies = [], lasers = [], particles = [], stars = [];
+let enemies = [], lasers = [], particles = [];
 let gameScore = 0, gameLives = 3, gameStreak = 0;
 let beamActive = false, beamTimer = 0;
 let spawnTimer = 0, spawnInterval = 3.0;
 let difficulty = 'normal', gameTime = 0;
 let gameDeck = [...hiragana];
-let gameRecog = null, gameListening = false, gameResultHandled = false;
+let groundMesh = null, groundOffset = 0;
+let keys = {};
+
+// Player ship position (used for dodging - future)
+let shipX = 0, shipY = 0, shipTargetX = 0, shipTargetY = 0;
 
 const DIFF = {
-  normal: { speed: 0.04, spawnMin: 2.8, spawnMax: 5.0, maxEnemies: 6 },
-  hard:   { speed: 0.07, spawnMin: 1.8, spawnMax: 3.2, maxEnemies: 9 },
-  insane: { speed: 0.12, spawnMin: 0.9, spawnMax: 2.0, maxEnemies: 14 },
+  normal: { speed: 0.25, spawnMin: 2.5, spawnMax: 4.5, maxEnemies: 6 },
+  hard:   { speed: 0.45, spawnMin: 1.5, spawnMax: 2.8, maxEnemies: 9 },
+  insane: { speed: 0.75, spawnMin: 0.8, spawnMax: 1.8, maxEnemies: 14 },
 };
 
 function initGame() {
-  if (typeof THREE === 'undefined') {
-    setTimeout(initGame, 100); return; // Three.js not loaded yet
-  }
+  if (typeof THREE === 'undefined') { setTimeout(initGame, 100); return; }
   const canvas = document.getElementById('game-canvas');
-  if (renderer) { renderer.dispose(); }
-  // Use window dimensions — canvas may not have layout dimensions yet if just made visible
-  const W = canvas.clientWidth || window.innerWidth;
-  const H = canvas.clientHeight || window.innerHeight;
+  const W = window.innerWidth, H = window.innerHeight;
+
+  if (renderer) {
+    renderer.dispose();
+    enemies.forEach(e => scene && scene.remove(e));
+    lasers.forEach(l => scene && scene.remove(l));
+    particles.forEach(p => scene && scene.remove(p));
+  }
+
+  enemies = []; lasers = []; particles = [];
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x050608);
-  scene.fog = new THREE.Fog(0x050608, 80, 220);
-  camera = new THREE.PerspectiveCamera(65, W / H, 0.1, 500);
-  camera.position.set(0, 2, 0);
-  camera.lookAt(0, 0, -50);
+  scene.background = new THREE.Color(0x060810);
+  scene.fog = new THREE.FogExp2(0x060810, 0.008);
+
+  camera = new THREE.PerspectiveCamera(70, W / H, 0.1, 800);
+  camera.position.set(0, 4, 18);
+  camera.lookAt(0, 2, 0);
+
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setSize(W, H);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   // Lighting
-  scene.add(new THREE.AmbientLight(0x111122, 2));
-  const dir = new THREE.DirectionalLight(0x8899ff, 3);
-  dir.position.set(10, 20, 5); scene.add(dir);
-  const rim = new THREE.DirectionalLight(0xff6633, 1.5);
-  rim.position.set(-10, -5, -20); scene.add(rim);
+  scene.add(new THREE.AmbientLight(0x223355, 3));
+  const sun = new THREE.DirectionalLight(0xffffff, 4);
+  sun.position.set(30, 50, -80); scene.add(sun);
+  const accent = new THREE.DirectionalLight(0xff6622, 2);
+  accent.position.set(-20, -10, 20); scene.add(accent);
 
   // Stars
-  stars = [];
   const starGeo = new THREE.BufferGeometry();
-  const starPos = new Float32Array(2000 * 3);
-  for (let i = 0; i < 2000; i++) {
-    starPos[i*3]   = (Math.random() - 0.5) * 400;
-    starPos[i*3+1] = (Math.random() - 0.5) * 200;
-    starPos[i*3+2] = (Math.random() - 0.5) * 400 - 50;
+  const sp = new Float32Array(3000 * 3);
+  for (let i = 0; i < 3000; i++) {
+    sp[i*3]   = (Math.random()-0.5)*600;
+    sp[i*3+1] = Math.random()*150 + 10;
+    sp[i*3+2] = (Math.random()-0.5)*600 - 100;
   }
-  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-  const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.3, sizeAttenuation: true });
-  scene.add(new THREE.Points(starGeo, starMat));
+  starGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color:0xffffff, size:0.4 })));
 
-  // Ground grid (runway feeling)
-  const gridHelper = new THREE.GridHelper(300, 60, 0x1a1a2e, 0x1a1a2e);
-  gridHelper.position.y = -8;
-  scene.add(gridHelper);
+  // Scrolling ground — tiled plane using a grid texture drawn on canvas
+  const gridCanvas = document.createElement('canvas');
+  gridCanvas.width = gridCanvas.height = 256;
+  const gc = gridCanvas.getContext('2d');
+  gc.fillStyle = '#060810';
+  gc.fillRect(0,0,256,256);
+  gc.strokeStyle = '#1a2a5a';
+  gc.lineWidth = 1;
+  for (let i=0; i<=8; i++) {
+    gc.beginPath(); gc.moveTo(i*32, 0); gc.lineTo(i*32, 256); gc.stroke();
+    gc.beginPath(); gc.moveTo(0, i*32); gc.lineTo(256, i*32); gc.stroke();
+  }
+  const gridTex = new THREE.CanvasTexture(gridCanvas);
+  gridTex.wrapS = gridTex.wrapT = THREE.RepeatWrapping;
+  gridTex.repeat.set(40, 80);
+  const groundGeo = new THREE.PlaneGeometry(400, 800);
+  const groundMat = new THREE.MeshBasicMaterial({ map: gridTex, side: THREE.FrontSide });
+  groundMesh = new THREE.Mesh(groundGeo, groundMat);
+  groundMesh.rotation.x = -Math.PI / 2;
+  groundMesh.position.set(0, -8, -200);
+  scene.add(groundMesh);
 
-  enemies = []; lasers = []; particles = []; gameTime = 0;
-  spawnTimer = 0; spawnInterval = DIFF[difficulty].spawnMin;
+  // Horizon glow
+  const horizonGeo = new THREE.PlaneGeometry(600, 30);
+  const horizonMat = new THREE.MeshBasicMaterial({ color:0x112244, transparent:true, opacity:0.6, side:THREE.DoubleSide });
+  const horizon = new THREE.Mesh(horizonGeo, horizonMat);
+  horizon.rotation.x = -Math.PI/2; horizon.position.set(0,-8,-300);
+  scene.add(horizon);
 
+  // Player ship (simple wedge visible at bottom of screen)
+  const shipGeo = new THREE.ConeGeometry(0.8, 3, 4);
+  shipGeo.rotateX(-Math.PI/2);
+  const shipMat = new THREE.MeshStandardMaterial({ color:0x88ccff, metalness:0.8, roughness:0.2, emissive:0x224488, emissiveIntensity:0.3 });
+  const shipMesh = new THREE.Mesh(shipGeo, shipMat);
+  shipMesh.position.set(0, 2, 15);
+  scene.add(shipMesh);
+  // Engine glow
+  const engGeo = new THREE.SphereGeometry(0.4, 8, 8);
+  const engMat = new THREE.MeshBasicMaterial({ color:0xff6600 });
+  const eng = new THREE.Mesh(engGeo, engMat);
+  eng.position.set(0, 2, 17);
+  scene.add(eng);
+  // Wing lights
+  [-1.2, 1.2].forEach(x => {
+    const wl = new THREE.Mesh(new THREE.SphereGeometry(0.15,6,6), new THREE.MeshBasicMaterial({color: x<0 ? 0xff0000 : 0x00ff00}));
+    wl.position.set(x*1.5, 2, 15.5); scene.add(wl);
+  });
+
+  spawnTimer = 0; gameTime = 0; groundOffset = 0;
   window.addEventListener('resize', onGameResize);
 }
 
 function onGameResize() {
   if (!renderer || appMode !== 'game') return;
-  const canvas = document.getElementById('game-canvas');
-  camera.aspect = canvas.clientWidth / canvas.clientHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  const W = window.innerWidth, H = window.innerHeight;
+  camera.aspect = W/H; camera.updateProjectionMatrix();
+  renderer.setSize(W, H);
 }
 
-// ── Enemy plane geometry ──────────────────────────────────────────────────────
-function makeEnemyMesh(kanaEntry) {
+// ── Enemy: simple glowing diamond with kana sprite ───────────────────────────
+function makeEnemy(entry) {
   const group = new THREE.Group();
+  const m = masteryScore(getCurrentUserStats(profile)[entry.k]);
+  let col = 0x4488ff;          // unseen — blue
+  if (m !== null) {
+    if (m < 0.33)      col = 0xff3333;  // struggling — red
+    else if (m < 0.67) col = 0xffaa22;  // needs work — amber
+    else               col = 0x33ff99;  // mastered — green
+  }
 
-  // Body — sleek fuselage
-  const bodyGeo = new THREE.ConeGeometry(0.35, 3.5, 5);
-  bodyGeo.rotateX(Math.PI / 2);
-  const m = masteryScore(getCurrentUserStats(profile)[kanaEntry.k]);
-  // Color: red = struggling, gold = medium, teal = mastered
-  let col = 0xe05555;
-  if (m === null) col = 0x6688cc;
-  else if (m > 0.6) col = 0x55bb99;
-  else if (m > 0.3) col = 0xc8a97e;
-  const bodyMat = new THREE.MeshStandardMaterial({ color: col, metalness: 0.7, roughness: 0.3, emissive: col, emissiveIntensity: 0.15 });
-  group.add(new THREE.Mesh(bodyGeo, bodyMat));
+  // Body: two cones joined at base = diamond shape
+  const top = new THREE.ConeGeometry(1, 2.5, 6);
+  top.rotateX(Math.PI); // point forward
+  const bot = new THREE.ConeGeometry(1, 1.5, 6);
+  const mat = new THREE.MeshStandardMaterial({ color:col, emissive:col, emissiveIntensity:0.4, metalness:0.6, roughness:0.3 });
+  const topMesh = new THREE.Mesh(top, mat); topMesh.position.z = -1.25;
+  const botMesh = new THREE.Mesh(bot, mat); botMesh.position.z = 0.75;
+  group.add(topMesh); group.add(botMesh);
 
-  // Wings
-  const wingGeo = new THREE.BoxGeometry(5, 0.08, 1.2);
-  const wingMat = new THREE.MeshStandardMaterial({ color: col, metalness: 0.8, roughness: 0.2 });
-  const wings = new THREE.Mesh(wingGeo, wingMat); wings.position.z = 0.3;
-  group.add(wings);
+  // Wings — flat triangles
+  [-1,1].forEach(side => {
+    const wg = new THREE.BufferGeometry();
+    const verts = new Float32Array([0,0,0, side*3,0,-0.5, side*1,0,1.5]);
+    wg.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+    wg.computeVertexNormals();
+    const wm = new THREE.Mesh(wg, new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:0.2, side:THREE.DoubleSide}));
+    group.add(wm);
+  });
 
-  // Tail fins
-  const finGeo = new THREE.BoxGeometry(0.08, 0.8, 0.7);
-  const fin = new THREE.Mesh(finGeo, wingMat); fin.position.set(0, 0.5, 1.4);
-  group.add(fin);
-
-  // Engine glow
-  const glowGeo = new THREE.SphereGeometry(0.22, 8, 8);
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0xff4400 });
-  const glow = new THREE.Mesh(glowGeo, glowMat); glow.position.z = 1.7;
-  group.add(glow);
-
-  // Kana label as canvas sprite
-  const kanaSprite = makeKanaSprite(kanaEntry.k, col);
-  kanaSprite.position.set(0, 2.2, 0);
-  kanaSprite.scale.set(4, 2, 1);
-  group.add(kanaSprite);
-  group.userData.kanaSprite = kanaSprite;
-  group.userData.entry = kanaEntry;
-  group.userData.hp = 1;
-
+  // Kana label sprite
+  const sprite = makeKanaSprite(entry.k, col);
+  sprite.position.set(0, 2.5, 0);
+  sprite.scale.set(5, 2.5, 1);
+  group.add(sprite);
+  group.userData.entry = entry;
+  group.userData.sprite = sprite;
   return group;
 }
 
 function makeKanaSprite(kanaChar, color) {
-  const size = 256;
-  const cv = document.createElement('canvas'); cv.width = size; cv.height = size / 2;
+  const cv = document.createElement('canvas');
+  cv.width = 200; cv.height = 80;
   const ctx = cv.getContext('2d');
-  ctx.clearRect(0, 0, cv.width, cv.height);
-  // Background pill
-  const hex = color.toString(16).padStart(6,'0');
-  const r = parseInt(hex.slice(0,2), 16);
-  const g = parseInt(hex.slice(2,4), 16);
-  const b = parseInt(hex.slice(4,6), 16);
-  ctx.fillStyle = `rgba(${r},${g},${b},0.2)`;
-  ctx.beginPath(); ctx.roundRect(8, 4, cv.width-16, cv.height-8, 12); ctx.fill();
-  ctx.strokeStyle = `rgba(${r},${g},${b},0.8)`; ctx.lineWidth = 2;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  // Background
+  const r = (color >> 16) & 0xff, g = (color >> 8) & 0xff, b = color & 0xff;
+  ctx.fillStyle = `rgba(${r},${g},${b},0.25)`;
+  ctx.beginPath();
+  ctx.rect(4, 4, cv.width-8, cv.height-8);
+  ctx.fill();
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.9)`;
+  ctx.lineWidth = 2;
   ctx.stroke();
-  // Kana text
-  ctx.fillStyle = '#f0ede8';
-  ctx.font = 'bold 72px serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  // Kana
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 52px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillText(kanaChar, cv.width/2, cv.height/2);
   const tex = new THREE.CanvasTexture(cv);
-  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
-  return new THREE.Sprite(mat);
+  return new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false }));
 }
 
 function spawnEnemy() {
   if (enemies.length >= DIFF[difficulty].maxEnemies) return;
   const pool = gameDeck.filter(e => !enemies.find(en => en.userData.entry.k === e.k));
-  const pickFrom = pool.length > 0 ? pool : gameDeck;
+  const pickFrom = pool.length > 0 ? pool : [...gameDeck];
   const entry = weightedPick(pickFrom);
   if (!entry) return;
-  const mesh = makeEnemyMesh(entry);
-  const x = (Math.random() - 0.5) * 30;
-  const y = (Math.random() - 0.5) * 10 + 1;
-  const z = -200 - Math.random() * 40;
+  const mesh = makeEnemy(entry);
+  // Spawn in front of camera, spread across screen
+  const x = (Math.random()-0.5) * 40;
+  const y = Math.random() * 12 - 2;
+  const z = -120 - Math.random() * 40;
   mesh.position.set(x, y, z);
-  mesh.rotation.y = Math.PI; // facing toward camera
-  mesh.userData.vx = (Math.random() - 0.5) * 0.008;
-  mesh.userData.vy = (Math.random() - 0.5) * 0.003;
-  scene.add(mesh); enemies.push(mesh);
+  mesh.userData.vy = (Math.random()-0.5) * 0.02;
+  mesh.userData.vx = (Math.random()-0.5) * 0.015;
+  scene.add(mesh);
+  enemies.push(mesh);
   updateNearestHint();
 }
 
-function fireLaser(targetEnemy) {
-  const group = new THREE.Group();
-  const isCannon = beamActive;
-
-  // Laser bolt
-  const laserGeo = new THREE.CylinderGeometry(isCannon ? 0.12 : 0.04, isCannon ? 0.12 : 0.04, 2, 6);
-  laserGeo.rotateX(Math.PI/2);
-  const laserMat = new THREE.MeshBasicMaterial({ color: isCannon ? 0x00ffcc : 0x44aaff });
-  const bolt = new THREE.Mesh(laserGeo, laserMat); group.add(bolt);
-
-  // Glow halo
-  const haloGeo = new THREE.CylinderGeometry(isCannon ? 0.35 : 0.15, isCannon ? 0.35 : 0.15, 2.5, 6);
-  haloGeo.rotateX(Math.PI/2);
-  const haloMat = new THREE.MeshBasicMaterial({ color: isCannon ? 0x00ffcc : 0x2266ff, transparent: true, opacity: 0.25 });
-  group.add(new THREE.Mesh(haloGeo, haloMat));
-
-  group.position.set((Math.random()-0.5)*2, -0.5, -1);
-  group.userData.target = targetEnemy;
-  group.userData.speed = isCannon ? 6 : 4;
-  scene.add(group); lasers.push(group);
+function fireLaser(target) {
+  const geo = new THREE.CylinderGeometry(beamActive?0.18:0.06, beamActive?0.18:0.06, 4, 6);
+  geo.rotateX(Math.PI/2);
+  const mat = new THREE.MeshBasicMaterial({ color: beamActive ? 0x00ffcc : 0x44aaff });
+  const bolt = new THREE.Mesh(geo, mat);
+  bolt.position.copy(camera.position).add(new THREE.Vector3((Math.random()-0.5)*2, -1, -2));
+  bolt.userData.target = target;
+  bolt.userData.speed = beamActive ? 8 : 5;
+  scene.add(bolt);
+  lasers.push(bolt);
+  // Muzzle flash
+  const flash = new THREE.Mesh(new THREE.SphereGeometry(0.4,6,6), new THREE.MeshBasicMaterial({color:0xffffff}));
+  flash.position.copy(bolt.position);
+  scene.add(flash);
+  setTimeout(() => scene.remove(flash), 60);
 }
 
-function spawnExplosion(pos, color) {
-  const count = 28;
+function explode(pos, col) {
+  const count = 24;
   const geo = new THREE.BufferGeometry();
-  const positions = new Float32Array(count * 3);
-  const velocities = [];
-  for (let i = 0; i < count; i++) {
-    positions[i*3] = pos.x; positions[i*3+1] = pos.y; positions[i*3+2] = pos.z;
-    velocities.push(new THREE.Vector3((Math.random()-0.5)*0.3, (Math.random()-0.5)*0.3, (Math.random()-0.5)*0.3));
+  const pos3 = new Float32Array(count * 3);
+  const vels = [];
+  for (let i=0; i<count; i++) {
+    pos3[i*3]=pos.x; pos3[i*3+1]=pos.y; pos3[i*3+2]=pos.z;
+    const speed = 0.15 + Math.random()*0.25;
+    const theta = Math.random()*Math.PI*2, phi = Math.random()*Math.PI;
+    vels.push(new THREE.Vector3(Math.sin(phi)*Math.cos(theta)*speed, Math.sin(phi)*Math.sin(theta)*speed, Math.cos(phi)*speed));
   }
-  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const mat = new THREE.PointsMaterial({ color, size: 0.5, sizeAttenuation: true });
-  const pts = new THREE.Points(geo, mat);
-  pts.userData.velocities = velocities; pts.userData.life = 1.0;
+  geo.setAttribute('position', new THREE.BufferAttribute(pos3,3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({color:col, size:0.6, transparent:true}));
+  pts.userData.vels = vels; pts.userData.life = 1.0;
   scene.add(pts); particles.push(pts);
+  // Ring shockwave
+  const ringGeo = new THREE.RingGeometry(0.1, 0.5, 16);
+  const ringMat = new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0.8, side:THREE.DoubleSide});
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.position.copy(pos); ring.lookAt(camera.position);
+  ring.userData.life = 1.0; ring.userData.isRing = true;
+  scene.add(ring); particles.push(ring);
+}
+
+function destroyEnemy(enemy) {
+  const col = enemy.children[0]?.material?.color?.getHex() || 0xffaa44;
+  explode(enemy.position.clone(), col);
+  Sounds.correct();
+  scene.remove(enemy);
+  enemies = enemies.filter(e => e !== enemy);
+  const m = masteryScore(getCurrentUserStats(profile)[enemy.userData.entry.k]);
+  gameScore += Math.round(100 * (1 / Math.max(0.15, m || 0.5)));
+  document.getElementById('hud-score').textContent = gameScore;
+  gameStreak++;
+  recordAttempt(profile, enemy.userData.entry.k, true, 'game');
+  if (gameStreak >= 5 && !beamActive) {
+    beamActive = true; beamTimer = 10;
+    document.getElementById('beam-active').classList.add('on');
+  }
+  updateGameStreakHUD(); updateNearestHint();
+}
+
+function enemyReachedPlayer(enemy) {
+  explode(new THREE.Vector3(0,2,10), 0xff2200);
+  Sounds.wrong();
+  recordAttempt(profile, enemy.userData.entry.k, false, 'game');
+  scene.remove(enemy);
+  enemies = enemies.filter(e => e !== enemy);
+  gameStreak = 0; beamActive = false; beamTimer = 0;
+  document.getElementById('beam-active').classList.remove('on');
+  gameLives--;
+  for (let i=0; i<3; i++) {
+    const p = document.getElementById('life-'+i);
+    if(p) p.classList.toggle('lost', i >= gameLives);
+  }
+  const flash = document.getElementById('hit-flash');
+  flash.classList.add('flash'); setTimeout(()=>flash.classList.remove('flash'),200);
+  // Camera shake
+  const ox = camera.position.x;
+  camera.position.x += 1.5;
+  setTimeout(()=>{ camera.position.x = ox-1; }, 60);
+  setTimeout(()=>{ camera.position.x = ox; }, 120);
+  updateGameStreakHUD(); updateNearestHint();
+  if (gameLives <= 0) endGame();
 }
 
 function updateNearestHint() {
   const el = document.getElementById('hint-kana-text');
-  if (!el || !enemies.length) { if(el) el.textContent = ''; return; }
+  if (!el) return;
+  if (!enemies.length) { el.textContent = ''; return; }
   const nearest = enemies.reduce((a,b) => a.position.z > b.position.z ? a : b);
   el.textContent = nearest.userData.entry.k;
-}
-
-function destroyEnemy(enemy) {
-  spawnExplosion(enemy.position.clone(), 0xffaa44);
-  Sounds.correct();
-  scene.remove(enemy);
-  enemies = enemies.filter(e => e !== enemy);
-  gameScore += Math.round(50 * (1 / Math.max(0.1, masteryScore(getCurrentUserStats(profile)[enemy.userData.entry.k]) || 0.5)));
-  document.getElementById('hud-score').textContent = gameScore;
-  gameStreak++;
-  recordAttempt(profile, enemy.userData.entry.k, true, 'game');
-  if (gameStreak >= 5 && !beamActive) { beamActive = true; beamTimer = 10; document.getElementById('beam-active').classList.add('on'); }
-  updateGameStreakHUD();
-  updateNearestHint();
-}
-
-function enemyReachedPlayer(enemy) {
-  spawnExplosion(new THREE.Vector3(0,0,0), 0xff3333);
-  Sounds.wrong();
-  recordAttempt(profile, enemy.userData.entry.k, false, 'game');
-  scene.remove(enemy); enemies = enemies.filter(e => e !== enemy);
-  gameStreak = 0; beamActive = false; beamTimer = 0;
-  document.getElementById('beam-active').classList.remove('on');
-  updateGameStreakHUD();
-  gameLives--;
-  for (let i = 0; i < 3; i++) {
-    const pip = document.getElementById('life-' + i);
-    if (pip) pip.classList.toggle('lost', i >= gameLives);
-  }
-  const flash = document.getElementById('hit-flash');
-  flash.classList.add('flash'); setTimeout(() => flash.classList.remove('flash'), 200);
-  camera.position.x += (Math.random()-0.5) * 0.8; // screen shake
-  setTimeout(() => camera.position.x = 0, 80);
-  if (gameLives <= 0) endGame();
-  updateNearestHint();
 }
 
 function updateGameStreakHUD() {
   const el = document.getElementById('hud-streak');
   if (!el) return;
   if (gameStreak === 0) { el.textContent = 'no streak'; el.className = ''; }
-  else if (gameStreak >= 5) { el.textContent = '🔥 ' + gameStreak + ' streak!'; el.className = 'hot'; }
+  else if (gameStreak >= 5) { el.textContent = '🔥 ' + gameStreak; el.className = 'hot'; }
   else { el.textContent = gameStreak + ' streak'; el.className = ''; }
+}
+
+let lastGameTime = 0;
+function gameAnimFrame(ts) {
+  if (!gameRunning) return;
+  const dt = Math.min(0.05, (ts - lastGameTime) / 1000);
+  lastGameTime = ts;
+  gameLoop(dt);
+  gameAnimId = requestAnimationFrame(gameAnimFrame);
 }
 
 function gameLoop(dt) {
   gameTime += dt;
   spawnTimer += dt;
-  if (beamActive) { beamTimer -= dt; if (beamTimer <= 0) { beamActive = false; document.getElementById('beam-active').classList.remove('on'); } }
 
-  // Dynamic difficulty ramp
+  if (beamActive) {
+    beamTimer -= dt;
+    if (beamTimer <= 0) { beamActive=false; document.getElementById('beam-active').classList.remove('on'); }
+  }
+
+  // Ramp difficulty
   const cfg = DIFF[difficulty];
   const ramp = Math.min(1, gameTime / 90);
-  const curSpeed = cfg.speed * (1 + ramp * 1.5);
-  spawnInterval = cfg.spawnMin + (1 - ramp) * (cfg.spawnMax - cfg.spawnMin);
-  if (spawnTimer >= spawnInterval) { spawnTimer = 0; spawnEnemy(); }
+  const speed = cfg.speed * (1 + ramp * 1.5);
+  spawnInterval = cfg.spawnMin + (1-ramp) * (cfg.spawnMax - cfg.spawnMin);
+  if (spawnTimer >= spawnInterval) { spawnTimer=0; spawnEnemy(); }
 
-  // Move enemies
-  for (let i = enemies.length - 1; i >= 0; i--) {
+  // Scroll ground
+  groundOffset += speed * 0.5;
+  if (groundMesh) {
+    groundMesh.material.map.offset.y = groundOffset * 0.005;
+    groundMesh.material.map.needsUpdate = false; // CanvasTexture doesn't need this
+  }
+
+  // Keyboard controls — camera sway
+  const CAM_SPEED = 8 * dt;
+  if (keys['ArrowLeft']  || keys['a']) shipTargetX -= CAM_SPEED;
+  if (keys['ArrowRight'] || keys['d']) shipTargetX += CAM_SPEED;
+  if (keys['ArrowUp']    || keys['w']) shipTargetY += CAM_SPEED * 0.5;
+  if (keys['ArrowDown']  || keys['s']) shipTargetY -= CAM_SPEED * 0.5;
+  shipTargetX = Math.max(-12, Math.min(12, shipTargetX));
+  shipTargetY = Math.max(-3,  Math.min(6, shipTargetY));
+  shipX += (shipTargetX - shipX) * 0.12;
+  shipY += (shipTargetY - shipY) * 0.12;
+  camera.position.x += (shipX - camera.position.x) * 0.08;
+  camera.position.y += (4 + shipY - camera.position.y) * 0.08;
+  camera.lookAt(shipX * 0.3, 2 + shipY * 0.3, 0);
+
+  // Move enemies toward camera
+  for (let i=enemies.length-1; i>=0; i--) {
     const e = enemies[i];
-    e.position.z += curSpeed;
+    e.position.z += speed;
     e.position.x += e.userData.vx;
     e.position.y += e.userData.vy;
-    e.rotation.z = Math.sin(gameTime * 0.8 + i) * 0.06; // subtle banking
-    if (e.position.z >= 3) { enemyReachedPlayer(e); if (!gameRunning) return; }
+    e.rotation.z = Math.sin(gameTime * 1.2 + i) * 0.08; // banking
+    if (e.position.z >= 14) { enemyReachedPlayer(e); if (!gameRunning) return; }
   }
 
   // Move lasers
-  for (let i = lasers.length - 1; i >= 0; i--) {
+  for (let i=lasers.length-1; i>=0; i--) {
     const l = lasers[i];
-    const target = l.userData.target;
-    if (!target || !enemies.includes(target)) { scene.remove(l); lasers.splice(i,1); continue; }
-    const dir = target.position.clone().sub(l.position).normalize();
-    l.position.addScaledVector(dir, l.userData.speed * dt * 60);
-    l.lookAt(target.position);
-    if (l.position.distanceTo(target.position) < 2.5) {
-      destroyEnemy(target); scene.remove(l); lasers.splice(i,1); if (!gameRunning) return;
+    const tgt = l.userData.target;
+    if (!tgt || !enemies.includes(tgt)) { scene.remove(l); lasers.splice(i,1); continue; }
+    const dir = tgt.position.clone().sub(l.position).normalize();
+    l.position.addScaledVector(dir, l.userData.speed);
+    l.lookAt(tgt.position);
+    if (l.position.distanceTo(tgt.position) < 2.5) {
+      destroyEnemy(tgt); scene.remove(l); lasers.splice(i,1);
+      if (!gameRunning) return;
     }
   }
 
   // Update particles
-  for (let i = particles.length - 1; i >= 0; i--) {
+  for (let i=particles.length-1; i>=0; i--) {
     const p = particles[i];
-    p.userData.life -= dt * 1.8;
-    p.material.opacity = Math.max(0, p.userData.life);
-    const pos = p.geometry.attributes.position.array;
-    for (let j = 0; j < p.userData.velocities.length; j++) {
-      pos[j*3]   += p.userData.velocities[j].x;
-      pos[j*3+1] += p.userData.velocities[j].y;
-      pos[j*3+2] += p.userData.velocities[j].z;
+    p.userData.life -= dt * 2;
+    if (p.userData.life <= 0) { scene.remove(p); particles.splice(i,1); continue; }
+    if (p.userData.isRing) {
+      const s = 1 + (1-p.userData.life) * 6;
+      p.scale.set(s,s,s);
+      p.material.opacity = p.userData.life * 0.8;
+    } else {
+      p.material.opacity = p.userData.life;
+      const pa = p.geometry.attributes.position.array;
+      for (let j=0; j<p.userData.vels.length; j++) {
+        pa[j*3]   += p.userData.vels[j].x;
+        pa[j*3+1] += p.userData.vels[j].y;
+        pa[j*3+2] += p.userData.vels[j].z;
+      }
+      p.geometry.attributes.position.needsUpdate = true;
     }
-    p.geometry.attributes.position.needsUpdate = true;
-    if (p.userData.life <= 0) { scene.remove(p); particles.splice(i,1); }
   }
-
-  // Subtle camera drift
-  camera.position.x += (Math.sin(gameTime * 0.3) * 0.3 - camera.position.x) * 0.02;
-  camera.position.y += (2 + Math.sin(gameTime * 0.2) * 0.5 - camera.position.y) * 0.02;
-  camera.lookAt(0, 0, -50);
 
   renderer.render(scene, camera);
 }
 
-let lastTime = 0;
-function gameAnimFrame(ts) {
-  if (!gameRunning) return;
-  const dt = Math.min(0.05, (ts - lastTime) / 1000);
-  lastTime = ts;
-  gameLoop(dt);
-  gameAnimId = requestAnimationFrame(gameAnimFrame);
-}
-
 function startGame() {
-  gameRunning = true; gameScore = 0; gameLives = 3; gameStreak = 0;
-  beamActive = false; beamTimer = 0;
+  gameRunning = true; gameScore=0; gameLives=3; gameStreak=0;
+  beamActive=false; beamTimer=0; shipX=0; shipY=0; shipTargetX=0; shipTargetY=0;
   document.getElementById('hud-score').textContent = '0';
   document.getElementById('beam-active').classList.remove('on');
-  for (let i = 0; i < 3; i++) { const p = document.getElementById('life-' + i); if(p) p.classList.remove('lost'); }
+  for (let i=0; i<3; i++) { const p=document.getElementById('life-'+i); if(p) p.classList.remove('lost'); }
   document.getElementById('game-over').classList.remove('show');
   updateGameStreakHUD();
-  gameDeck = quizMode === 'hiragana' ? [...hiragana] : quizMode === 'katakana' ? [...katakana] : [...hiragana,...katakana];
-  gameAnimId = requestAnimationFrame(ts => { lastTime = ts; gameAnimId = requestAnimationFrame(gameAnimFrame); });
+  gameDeck = quizMode==='hiragana' ? [...hiragana] : quizMode==='katakana' ? [...katakana] : [...hiragana,...katakana];
+  gameAnimId = requestAnimationFrame(ts => { lastGameTime=ts; gameAnimId=requestAnimationFrame(gameAnimFrame); });
   startGameSTT();
 }
 
 function stopGame() {
   gameRunning = false;
-  if (gameAnimId) { cancelAnimationFrame(gameAnimId); gameAnimId = null; }
-  stopGameSTT();
-  enemies = []; lasers = []; particles = [];
+  if (gameAnimId) { cancelAnimationFrame(gameAnimId); gameAnimId=null; }
+  stopGameSTT(); enemies=[]; lasers=[]; particles=[];
 }
 
 function endGame() {
@@ -1524,74 +1605,68 @@ function endGame() {
 let gameRecogInst = null, gameListeningFlag = false;
 
 function startGameSTT() {
-  if (sttMode === 'whisper') {
-    startGameWhisperLoop();
-  } else {
-    startGameBrowserSTT();
-  }
+  if (sttMode === 'whisper') { startGameWhisperLoop(); }
+  else { startGameBrowserSTT(); }
 }
-
 function stopGameSTT() {
-  if (gameRecogInst) { try { gameRecogInst.stop(); } catch(e){} gameRecogInst = null; }
+  if (gameRecogInst) { try { gameRecogInst.stop(); } catch(e){} gameRecogInst=null; }
   gameListeningFlag = false;
 }
-
 function startGameBrowserSTT() {
   if (gameListeningFlag || !gameRunning) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return;
   const r = new SR();
-  r.lang = 'ja-JP'; r.interimResults = false; r.maxAlternatives = 8; r.continuous = false;
-  r.onstart = () => { gameListeningFlag = true; const el = document.getElementById('game-stt-feedback'); if(el) el.textContent = '🎤'; };
-  r.onend   = () => { gameListeningFlag = false; if (gameRunning) setTimeout(startGameBrowserSTT, 80); };
-  r.onerror = e => { gameListeningFlag = false; if (gameRunning && e.error !== 'aborted') setTimeout(startGameBrowserSTT, 200); };
+  r.lang='ja-JP'; r.interimResults=false; r.maxAlternatives=8; r.continuous=false;
+  r.onstart = () => { gameListeningFlag=true; const el=document.getElementById('game-stt-feedback'); if(el) el.textContent='🎤'; };
+  r.onend   = () => { gameListeningFlag=false; if (gameRunning) setTimeout(startGameBrowserSTT, 80); };
+  r.onerror = e => { gameListeningFlag=false; if (gameRunning && e.error!=='aborted') setTimeout(startGameBrowserSTT, 200); };
   r.onresult = e => {
-    const alts = [];
-    for (let i=0; i<e.results.length; i++) for (let j=0; j<e.results[i].length; j++) { const t=e.results[i][j].transcript.trim(); if(t) alts.push(t); }
-    if (alts.length) { gameListeningFlag = false; r.stop(); processGameSpeech(alts); }
+    const alts=[];
+    for (let i=0;i<e.results.length;i++) for(let j=0;j<e.results[i].length;j++) { const t=e.results[i][j].transcript.trim(); if(t) alts.push(t); }
+    if (alts.length) { gameListeningFlag=false; r.stop(); processGameSpeech(alts); }
   };
   gameRecogInst = r;
-  try { r.start(); } catch(err) {}
+  try { r.start(); } catch(e){}
 }
 
-// Whisper loop for game mode
 async function startGameWhisperLoop() {
   if (!whisperReady || !gameRunning) return;
-  // One-shot record → transcribe → repeat
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mimeType = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg'].find(t => MediaRecorder.isTypeSupported(t)) || '';
-    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-    const chunks = [];
-    recorder.ondataavailable = e => { if(e.data.size > 0) chunks.push(e.data); };
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    const mimeType = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg'].find(t=>MediaRecorder.isTypeSupported(t))||'';
+    const recorder = new MediaRecorder(stream, mimeType?{mimeType}:{});
+    const chunks=[];
+    recorder.ondataavailable = e => { if(e.data.size>0) chunks.push(e.data); };
     recorder.start(50);
-    const vadCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const src = vadCtx.createMediaStreamSource(stream);
-    const analyser = vadCtx.createAnalyser(); analyser.fftSize = 512; src.connect(analyser);
-    const start = Date.now(); let speechDetected = false, silenceStart = null;
-    document.getElementById('game-stt-feedback').textContent = '🎤';
+    const vadCtx = new (window.AudioContext||window.webkitAudioContext)();
+    const src2 = vadCtx.createMediaStreamSource(stream);
+    const analyser = vadCtx.createAnalyser(); analyser.fftSize=512; src2.connect(analyser);
+    const t0=Date.now(); let speechDetected=false, silenceStart=null;
+    const sttEl = document.getElementById('game-stt-feedback');
+    if(sttEl) sttEl.textContent='🎤';
     await new Promise(resolve => {
       const vad = () => {
         if (!gameRunning) { resolve(); return; }
-        const buf = new Float32Array(analyser.fftSize); analyser.getFloatTimeDomainData(buf);
-        const rms = Math.sqrt(buf.reduce((s,v) => s+v*v, 0) / buf.length);
-        if (rms > 0.014) { speechDetected = true; silenceStart = null; }
-        else if (speechDetected && !silenceStart) silenceStart = Date.now();
-        const done = (speechDetected && silenceStart && Date.now()-silenceStart > 500) || Date.now()-start > 2500;
-        if (done) resolve(); else requestAnimationFrame(vad);
+        const buf=new Float32Array(analyser.fftSize); analyser.getFloatTimeDomainData(buf);
+        const rms=Math.sqrt(buf.reduce((s,v)=>s+v*v,0)/buf.length);
+        if (rms>0.014) { speechDetected=true; silenceStart=null; }
+        else if (speechDetected && !silenceStart) silenceStart=Date.now();
+        if ((speechDetected&&silenceStart&&Date.now()-silenceStart>500)||Date.now()-t0>2500) resolve();
+        else requestAnimationFrame(vad);
       };
       requestAnimationFrame(vad);
     });
     vadCtx.close();
-    await new Promise(res => { recorder.onstop = res; try { recorder.stop(); } catch(e){ res(); } });
-    stream.getTracks().forEach(t => t.stop());
+    await new Promise(res => { recorder.onstop=res; try{recorder.stop();}catch(e){res();} });
+    stream.getTracks().forEach(t=>t.stop());
     if (speechDetected && gameRunning) {
-      document.getElementById('game-stt-feedback').textContent = '⟳';
-      const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
-      const float32 = await blobToFloat32(blob);
-      const result = await whisperPipeline(float32, { language:'japanese', task:'transcribe', no_speech_threshold:0.3, chunk_length_s:3, stride_length_s:0.5 });
-      const text = (result.text || '').trim();
-      if (text) processGameSpeech([text]);
+      if(sttEl) sttEl.textContent='⟳';
+      const blob=new Blob(chunks,{type:chunks[0]?.type||'audio/webm'});
+      const f32=await blobToFloat32(blob);
+      const result=await whisperPipeline(f32,{language:'japanese',task:'transcribe',no_speech_threshold:0.3,chunk_length_s:3,stride_length_s:0.5});
+      const text=(result.text||'').trim();
+      if(text) processGameSpeech([text]);
     }
   } catch(err) { /* silent */ }
   if (gameRunning) setTimeout(startGameWhisperLoop, 100);
@@ -1599,31 +1674,33 @@ async function startGameWhisperLoop() {
 
 function processGameSpeech(alts) {
   if (!gameRunning || !enemies.length) return;
-  const display = alts[0] || '';
-  document.getElementById('game-stt-feedback').textContent = display + ' → ' + toRomaji(display);
-  setTimeout(() => { if(gameRunning) document.getElementById('game-stt-feedback').textContent = ''; }, 1200);
-
-  // Find any enemy whose kana matches
+  const display=alts[0]||'';
+  const sttEl=document.getElementById('game-stt-feedback');
+  if(sttEl) { sttEl.textContent=display+' → '+toRomaji(display); setTimeout(()=>{ if(gameRunning&&sttEl) sttEl.textContent=''; },1200); }
   for (const enemy of enemies) {
-    if (accepted(enemy.userData.entry, alts)) {
-      fireLaser(enemy);
-      return;
-    }
+    if (accepted(enemy.userData.entry, alts)) { fireLaser(enemy); return; }
   }
 }
 
 // Difficulty selector
 document.querySelectorAll('.diff-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active'); difficulty = btn.dataset.diff;
+    document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); difficulty=btn.dataset.diff;
   });
 });
 document.getElementById('play-again-btn').addEventListener('click', () => {
   document.getElementById('game-over').classList.remove('show');
-  initGame(); startGame();
+  enemies.forEach(e=>scene&&scene.remove(e)); enemies=[];
+  lasers.forEach(l=>scene&&scene.remove(l)); lasers=[];
+  particles.forEach(p=>scene&&scene.remove(p)); particles=[];
+  startGame();
 });
 document.getElementById('go-menu-btn').addEventListener('click', showMenu);
+
+// Keyboard
+window.addEventListener('keydown', e=>{ keys[e.key]=true; });
+window.addEventListener('keyup',   e=>{ keys[e.key]=false; });
 
 // ═══════════════════════════════════════════════════════════
 // WHISPER HELPERS (shared between quiz and game)
