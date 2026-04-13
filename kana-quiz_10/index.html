@@ -1179,14 +1179,14 @@ function updateSymbolStats() {
   const m = masteryScore(s);
   const pct = m !== null ? Math.round(m * 100) : 0;
   const flagHtml = s.flagged ? '<span class="flag">★ flagged</span>' : '';
-  el.innerHTML = \`
+  el.innerHTML = `
     <div class="sym-stat-row">
-      <span class="hits">✓ \${s.correct}</span>
-      <span class="misses">✗ \${s.incorrect}</span>
-      \${flagHtml}
+      <span class="hits">✓ ${s.correct}</span>
+      <span class="misses">✗ ${s.incorrect}</span>
+      ${flagHtml}
     </div>
-    <div class="mastery-track"><div class="mastery-fill" style="width:\${pct}%"></div></div>
-  \`;
+    <div class="mastery-track"><div class="mastery-fill" style="width:${pct}%"></div></div>
+  `;
 }
 
 function updateGlobalStats() {
