@@ -1191,9 +1191,9 @@ let keys = {};
 let shipX = 0, shipY = 0, shipTargetX = 0, shipTargetY = 0;
 
 const DIFF = {
-  normal: { speed: 0.10, spawnMin: 4.0, spawnMax: 6.5, maxEnemies: 6 },
-  hard:   { speed: 0.18, spawnMin: 2.5, spawnMax: 4.0, maxEnemies: 9 },
-  insane: { speed: 0.32, spawnMin: 1.2, spawnMax: 2.5, maxEnemies: 14 },
+  normal: { speed: 0.02, spawnMin: 5.0, spawnMax: 8.0, maxEnemies: 6 },
+  hard:   { speed: 0.15, spawnMin: 3.0, spawnMax: 5.0, maxEnemies: 9 },
+  insane: { speed: 0.17, spawnMin: 1.5, spawnMax: 3.0, maxEnemies: 14 },
 };
 
 function initGame() {
@@ -1335,6 +1335,9 @@ function makeEnemy(entry) {
   group.add(sprite);
   group.userData.entry = entry;
   group.userData.sprite = sprite;
+  group.userData.hp = 3;
+  group.userData.hits = 0;
+  group.userData.romajiShown = false;
   return group;
 }
 
@@ -1382,20 +1385,67 @@ function spawnEnemy() {
 }
 
 function fireLaser(target) {
-  const geo = new THREE.CylinderGeometry(beamActive?0.18:0.06, beamActive?0.18:0.06, 4, 6);
+  if (!target || !enemies.includes(target)) return;
+
+  // Visual bolt from camera to target
+  const dir = target.position.clone().sub(camera.position);
+  const dist = dir.length();
+  const mid = camera.position.clone().addScaledVector(dir.normalize(), dist * 0.5);
+  const geo = new THREE.CylinderGeometry(beamActive?0.18:0.07, beamActive?0.18:0.07, dist, 6);
   geo.rotateX(Math.PI/2);
-  const mat = new THREE.MeshBasicMaterial({ color: beamActive ? 0x00ffcc : 0x44aaff });
+  const mat = new THREE.MeshBasicMaterial({ color: beamActive ? 0x00ffcc : 0x44aaff, transparent:true, opacity:0.9 });
   const bolt = new THREE.Mesh(geo, mat);
-  bolt.position.copy(camera.position).add(new THREE.Vector3((Math.random()-0.5)*2, -1, -2));
-  bolt.userData.target = target;
-  bolt.userData.speed = beamActive ? 8 : 5;
+  bolt.position.copy(mid);
+  bolt.lookAt(target.position);
+  bolt.rotateX(Math.PI/2);
   scene.add(bolt);
-  lasers.push(bolt);
+  setTimeout(() => scene.remove(bolt), 120);
+
   // Muzzle flash
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(0.4,6,6), new THREE.MeshBasicMaterial({color:0xffffff}));
-  flash.position.copy(bolt.position);
+  const flash = new THREE.Mesh(new THREE.SphereGeometry(0.5,8,8), new THREE.MeshBasicMaterial({color:0xffffff}));
+  flash.position.copy(camera.position).add(new THREE.Vector3(0,-0.5,-2));
   scene.add(flash);
-  setTimeout(() => scene.remove(flash), 60);
+  setTimeout(() => scene.remove(flash), 80);
+
+  // Hit flash on target
+  const hflash = new THREE.Mesh(new THREE.SphereGeometry(1.5,8,8), new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.6}));
+  hflash.position.copy(target.position);
+  scene.add(hflash);
+  setTimeout(() => scene.remove(hflash), 100);
+
+  // Apply damage
+  target.userData.hits = (target.userData.hits || 0) + 1;
+
+  if (target.userData.hits === 1 && !target.userData.romajiShown) {
+    // First hit: show romaji label on the enemy sprite
+    target.userData.romajiShown = true;
+    const entry = target.userData.entry;
+    const cv = document.createElement('canvas');
+    cv.width = 200; cv.height = 80;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,200,80);
+    ctx.fillStyle = 'rgba(255,200,80,0.3)';
+    ctx.fillRect(4,4,192,72);
+    ctx.strokeStyle = 'rgba(255,200,80,0.95)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(4,4,192,72);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 34px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(entry.k + '  ' + entry.r, 100, 40);
+    const tex = new THREE.CanvasTexture(cv);
+    target.userData.sprite.material.map = tex;
+    target.userData.sprite.material.needsUpdate = true;
+    // Tint enemy orange/yellow to show damage
+    target.children.forEach(c => { if (c.material && c.material.color) { c.material.emissive && c.material.emissive.set(0xffaa00); } });
+  } else if (target.userData.hits === 2) {
+    // Second hit: tint red, sprite flickers
+    target.children.forEach(c => { if (c.material && c.material.color) { c.material.color.set(0xff4400); c.material.emissive && c.material.emissive.set(0xff2200); } });
+  } else if (target.userData.hits >= 3 || beamActive) {
+    // Third hit / beam cannon: destroy
+    destroyEnemy(target);
+  }
 }
 
 function explode(pos, col) {
@@ -1512,19 +1562,26 @@ function gameLoop(dt) {
     groundMesh.material.map.needsUpdate = false; // CanvasTexture doesn't need this
   }
 
-  // Keyboard controls — camera sway
-  const CAM_SPEED = 8 * dt;
-  if (keys['ArrowLeft']  || keys['a']) shipTargetX -= CAM_SPEED;
-  if (keys['ArrowRight'] || keys['d']) shipTargetX += CAM_SPEED;
-  if (keys['ArrowUp']    || keys['w']) shipTargetY += CAM_SPEED * 0.5;
-  if (keys['ArrowDown']  || keys['s']) shipTargetY -= CAM_SPEED * 0.5;
-  shipTargetX = Math.max(-12, Math.min(12, shipTargetX));
-  shipTargetY = Math.max(-3,  Math.min(6, shipTargetY));
-  shipX += (shipTargetX - shipX) * 0.12;
-  shipY += (shipTargetY - shipY) * 0.12;
-  camera.position.x += (shipX - camera.position.x) * 0.08;
-  camera.position.y += (4 + shipY - camera.position.y) * 0.08;
-  camera.lookAt(shipX * 0.3, 2 + shipY * 0.3, 0);
+  // Plane controls — move the ship/camera through the world
+  // Left/Right: bank and strafe; Up/Down: climb/dive
+  const TURN_SPEED = 10 * dt;
+  const VERT_SPEED = 6 * dt;
+  if (keys['ArrowLeft']  || keys['a']) { shipTargetX -= TURN_SPEED; }
+  if (keys['ArrowRight'] || keys['d']) { shipTargetX += TURN_SPEED; }
+  if (keys['ArrowUp']    || keys['w']) { shipTargetY += VERT_SPEED; }
+  if (keys['ArrowDown']  || keys['s']) { shipTargetY -= VERT_SPEED; }
+  shipTargetX = Math.max(-25, Math.min(25, shipTargetX));
+  shipTargetY = Math.max(-4,  Math.min(10, shipTargetY));
+  // Smooth lerp
+  shipX += (shipTargetX - shipX) * 0.08;
+  shipY += (shipTargetY - shipY) * 0.08;
+  // Camera follows ship position — cockpit stays fixed, world moves
+  camera.position.x = shipX;
+  camera.position.y = 4 + shipY;
+  // Look slightly ahead in direction of travel (banking effect)
+  const bankAngle = (shipTargetX - shipX) * 0.04;
+  camera.lookAt(shipX * 0.5, 2 + shipY * 0.3, -10);
+  camera.rotation.z = -bankAngle; // visual bank roll
 
   // Move enemies toward camera
   for (let i=enemies.length-1; i>=0; i--) {
@@ -1536,19 +1593,7 @@ function gameLoop(dt) {
     if (e.position.z >= 14) { enemyReachedPlayer(e); if (!gameRunning) return; }
   }
 
-  // Move lasers
-  for (let i=lasers.length-1; i>=0; i--) {
-    const l = lasers[i];
-    const tgt = l.userData.target;
-    if (!tgt || !enemies.includes(tgt)) { scene.remove(l); lasers.splice(i,1); continue; }
-    const dir = tgt.position.clone().sub(l.position).normalize();
-    l.position.addScaledVector(dir, l.userData.speed);
-    l.lookAt(tgt.position);
-    if (l.position.distanceTo(tgt.position) < 2.5) {
-      destroyEnemy(tgt); scene.remove(l); lasers.splice(i,1);
-      if (!gameRunning) return;
-    }
-  }
+  // Lasers are now instant-hit (no tracking loop needed)
 
   // Update particles
   for (let i=particles.length-1; i>=0; i--) {
@@ -1699,8 +1744,23 @@ document.getElementById('play-again-btn').addEventListener('click', () => {
 document.getElementById('go-menu-btn').addEventListener('click', showMenu);
 
 // Keyboard
-window.addEventListener('keydown', e=>{ keys[e.key]=true; });
-window.addEventListener('keyup',   e=>{ keys[e.key]=false; });
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  // Space bar = fire at nearest enemy
+  if (e.key === ' ' && gameRunning && enemies.length) {
+    e.preventDefault();
+    const target = enemies.reduce((a,b) => a.position.z > b.position.z ? a : b);
+    fireLaser(target);
+    // Flag it
+    const stats = getCurrentUserStats(profile);
+    if (!stats[target.userData.entry.k]) stats[target.userData.entry.k] = {seen:0,correct:0,incorrect:0,fonts:{},symStreak:0,flagged:false};
+    stats[target.userData.entry.k].flagged = true;
+    saveProfile(profile);
+    const sttEl = document.getElementById('game-stt-feedback');
+    if (sttEl) { sttEl.textContent = '★ ' + target.userData.entry.k + ' flagged'; setTimeout(()=>{ if(sttEl) sttEl.textContent=''; },900); }
+  }
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
 
 // Manual fire — click/tap canvas shoots nearest enemy and flags it
 document.getElementById('game-canvas').addEventListener('click', e => {
@@ -1719,8 +1779,8 @@ document.getElementById('game-canvas').addEventListener('click', e => {
     setTimeout(() => { if(target.userData.sprite) target.userData.sprite.material.opacity = 1; }, 200);
   }
   // Show feedback
-  const sttEl = document.getElementById('game-stt-feedback');
-  if (sttEl) { sttEl.textContent = '★ ' + target.userData.entry.k + ' flagged'; setTimeout(()=>{ if(sttEl) sttEl.textContent=''; }, 1000); }
+  // Also fire the laser (tap = fire on mobile)
+  fireLaser(target);
 });
 
 // ═══════════════════════════════════════════════════════════
