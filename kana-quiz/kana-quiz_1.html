@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>かな — Kana Voice Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0f;
+    --surface: #161618;
+    --border: rgba(255,255,255,0.08);
+    --border-med: rgba(255,255,255,0.14);
+    --text: #f0ede8;
+    --text-muted: rgba(240,237,232,0.45);
+    --text-dim: rgba(240,237,232,0.2);
+    --accent: #c8a97e;
+    --accent-dim: rgba(200,169,126,0.15);
+    --green: #6fcf8e;
+    --green-dim: rgba(111,207,142,0.12);
+    --red: #e06c6c;
+    --red-dim: rgba(224,108,108,0.12);
+    --radius: 12px;
+    --font-jp: 'Shippori Mincho', serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  /* subtle grid texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* header */
+  header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+  }
+
+  .title {
+    font-family: var(--font-jp);
+    font-size: 20px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
+
+  /* mode tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+  }
+
+  .tab {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 5px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+  }
+
+  .tab.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  /* main card */
+  .card {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* corner accent lines */
+  .card::before, .card::after {
+    content: '';
+    position: absolute;
+    width: 24px; height: 24px;
+    border-color: var(--accent);
+    border-style: solid;
+    opacity: 0.35;
+  }
+  .card::before { top: 12px; left: 12px; border-width: 1px 0 0 1px; }
+  .card::after  { bottom: 12px; right: 12px; border-width: 0 1px 1px 0; }
+
+  /* kana character */
+  #kana-display {
+    font-family: var(--font-jp);
+    font-size: 130px;
+    line-height: 1;
+    color: var(--text);
+    margin: 0 0 0.25rem;
+    transition: opacity 0.18s, transform 0.18s;
+    text-shadow: 0 0 60px rgba(200,169,126,0.12);
+  }
+
+  #kana-display.flash-correct {
+    color: var(--green);
+    text-shadow: 0 0 40px rgba(111,207,142,0.3);
+  }
+
+  #kana-display.flash-wrong {
+    color: var(--red);
+  }
+
+  #romaji-hint {
+    font-size: 13px;
+    color: var(--text-muted);
+    height: 20px;
+    letter-spacing: 0.08em;
+    margin-bottom: 2rem;
+    transition: opacity 0.2s;
+  }
+
+  /* mic button */
+  #mic-btn {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    border: 1px solid var(--border-med);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
+
+  #mic-btn:hover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  #mic-btn.listening {
+    border-color: var(--green);
+    background: var(--green-dim);
+    animation: mic-pulse 1.6s ease-in-out infinite;
+  }
+
+  #mic-btn.correct {
+    border-color: var(--green);
+    background: var(--green-dim);
+  }
+
+  #mic-btn.wrong {
+    border-color: var(--red);
+    background: var(--red-dim);
+  }
+
+  @keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(111,207,142,0.25); }
+    50%       { box-shadow: 0 0 0 12px rgba(111,207,142,0); }
+  }
+
+  #mic-btn svg {
+    width: 26px; height: 26px;
+    transition: color 0.2s;
+  }
+
+  #mic-btn.listening svg { color: var(--green); }
+  #mic-btn.correct svg  { color: var(--green); }
+  #mic-btn.wrong svg    { color: var(--red); }
+
+  /* transcript */
+  #transcript {
+    font-size: 20px;
+    min-height: 30px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    margin-bottom: 0.4rem;
+    text-align: center;
+  }
+
+  #feedback {
+    font-size: 12px;
+    height: 18px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: center;
+    margin-bottom: 1.75rem;
+  }
+
+  #feedback.ok  { color: var(--green); }
+  #feedback.err { color: var(--red); }
+
+  /* action row */
+  .actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .action-btn {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .action-btn:hover {
+    border-color: var(--border-med);
+    color: var(--text);
+  }
+
+  /* scores */
+  .scores {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 1.25rem;
+  }
+
+  .score-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+  }
+
+  .score-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .score-num {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  #score-streak .score-num { color: var(--accent); }
+
+  /* error */
+  #error {
+    margin-top: 1rem;
+    font-size: 12px;
+    color: var(--red);
+    text-align: center;
+    letter-spacing: 0.04em;
+    min-height: 18px;
+  }
+
+  /* instruction */
+  #instruction {
+    margin-top: 2rem;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    text-align: center;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span class="title">かな練習</span>
+    <div class="tabs">
+      <button class="tab active" data-mode="hiragana">hiragana</button>
+      <button class="tab" data-mode="katakana">katakana</button>
+      <button class="tab" data-mode="both">both</button>
+    </div>
+  </header>
+
+  <div class="card">
+    <div id="kana-display">あ</div>
+    <div id="romaji-hint"></div>
+
+    <button id="mic-btn" title="Click to speak">
+      <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" color="var(--text-muted)">
+        <rect x="9.5" y="2.5" width="9" height="14" rx="4.5" fill="none"/>
+        <path d="M5.5 14c0 4.694 3.806 8.5 8.5 8.5s8.5-3.806 8.5-8.5"/>
+        <line x1="14" y1="22.5" x2="14" y2="26"/>
+        <line x1="10" y1="26" x2="18" y2="26"/>
+      </svg>
+    </button>
+
+    <div id="transcript"></div>
+    <div id="feedback"></div>
+
+    <div class="actions">
+      <button class="action-btn" id="hint-btn">hint</button>
+      <button class="action-btn" id="skip-btn">skip →</button>
+    </div>
+  </div>
+
+  <div class="scores">
+    <div class="score-cell" id="score-correct">
+      <div class="score-label">correct</div>
+      <div class="score-num">0</div>
+    </div>
+    <div class="score-cell" id="score-streak">
+      <div class="score-label">streak</div>
+      <div class="score-num">0</div>
+    </div>
+    <div class="score-cell" id="score-total">
+      <div class="score-label">total</div>
+      <div class="score-num">0</div>
+    </div>
+  </div>
+
+  <div id="error"></div>
+
+  <div id="instruction">
+    click the mic · say the kana · browser will ask for mic permission
+  </div>
+</div>
+
+<script>
+const hiragana = [
+  {k:'あ',r:'a'},{k:'い',r:'i'},{k:'う',r:'u'},{k:'え',r:'e'},{k:'お',r:'o'},
+  {k:'か',r:'ka'},{k:'き',r:'ki'},{k:'く',r:'ku'},{k:'け',r:'ke'},{k:'こ',r:'ko'},
+  {k:'さ',r:'sa'},{k:'し',r:'shi'},{k:'す',r:'su'},{k:'せ',r:'se'},{k:'そ',r:'so'},
+  {k:'た',r:'ta'},{k:'ち',r:'chi'},{k:'つ',r:'tsu'},{k:'て',r:'te'},{k:'と',r:'to'},
+  {k:'な',r:'na'},{k:'に',r:'ni'},{k:'ぬ',r:'nu'},{k:'ね',r:'ne'},{k:'の',r:'no'},
+  {k:'は',r:'ha'},{k:'ひ',r:'hi'},{k:'ふ',r:'fu'},{k:'へ',r:'he'},{k:'ほ',r:'ho'},
+  {k:'ま',r:'ma'},{k:'み',r:'mi'},{k:'む',r:'mu'},{k:'め',r:'me'},{k:'も',r:'mo'},
+  {k:'や',r:'ya'},{k:'ゆ',r:'yu'},{k:'よ',r:'yo'},
+  {k:'ら',r:'ra'},{k:'り',r:'ri'},{k:'る',r:'ru'},{k:'れ',r:'re'},{k:'ろ',r:'ro'},
+  {k:'わ',r:'wa'},{k:'を',r:'wo'},{k:'ん',r:'n'}
+];
+const katakana = [
+  {k:'ア',r:'a'},{k:'イ',r:'i'},{k:'ウ',r:'u'},{k:'エ',r:'e'},{k:'オ',r:'o'},
+  {k:'カ',r:'ka'},{k:'キ',r:'ki'},{k:'ク',r:'ku'},{k:'ケ',r:'ke'},{k:'コ',r:'ko'},
+  {k:'サ',r:'sa'},{k:'シ',r:'shi'},{k:'ス',r:'su'},{k:'セ',r:'se'},{k:'ソ',r:'so'},
+  {k:'タ',r:'ta'},{k:'チ',r:'chi'},{k:'ツ',r:'tsu'},{k:'テ',r:'te'},{k:'ト',r:'to'},
+  {k:'ナ',r:'na'},{k:'ニ',r:'ni'},{k:'ヌ',r:'nu'},{k:'ネ',r:'ne'},{k:'ノ',r:'no'},
+  {k:'ハ',r:'ha'},{k:'ヒ',r:'hi'},{k:'フ',r:'fu'},{k:'ヘ',r:'he'},{k:'ホ',r:'ho'},
+  {k:'マ',r:'ma'},{k:'ミ',r:'mi'},{k:'ム',r:'mu'},{k:'メ',r:'me'},{k:'モ',r:'mo'},
+  {k:'ヤ',r:'ya'},{k:'ユ',r:'yu'},{k:'ヨ',r:'yo'},
+  {k:'ラ',r:'ra'},{k:'リ',r:'ri'},{k:'ル',r:'ru'},{k:'レ',r:'re'},{k:'ロ',r:'ro'},
+  {k:'ワ',r:'wa'},{k:'ヲ',r:'wo'},{k:'ン',r:'n'}
+];
+
+// alternate accepted spellings
+const alts = {
+  shi:['shi','si'], chi:['chi','ti'], tsu:['tsu','tu'],
+  fu:['fu','hu'], wo:['wo','o'], n:['n','nn','m'],
+  ji:['ji','zi'], zu:['zu','du']
+};
+
+function accepted(romaji, transcript) {
+  const t = transcript.toLowerCase().trim();
+  const variants = alts[romaji] || [romaji];
+  return variants.some(v => t === v || t.startsWith(v) || t.endsWith(v));
+}
+
+let mode = 'hiragana';
+let deck = [...hiragana];
+let current = null;
+let nCorrect = 0, nStreak = 0, nTotal = 0;
+let recog = null, listening = false;
+
+const kanaEl    = document.getElementById('kana-display');
+const romajiEl  = document.getElementById('romaji-hint');
+const micBtn    = document.getElementById('mic-btn');
+const transcEl  = document.getElementById('transcript');
+const feedEl    = document.getElementById('feedback');
+const hintBtn   = document.getElementById('hint-btn');
+const skipBtn   = document.getElementById('skip-btn');
+const errorEl   = document.getElementById('error');
+
+function setScore(id, val) {
+  document.querySelector('#' + id + ' .score-num').textContent = val;
+}
+
+function animateKana(cls, cb) {
+  kanaEl.classList.add(cls);
+  setTimeout(() => { kanaEl.classList.remove(cls); cb && cb(); }, 500);
+}
+
+function next(fromCorrect) {
+  if (fromCorrect) {
+    animateKana('flash-correct', pickNext);
+  } else {
+    pickNext();
+  }
+}
+
+function pickNext() {
+  const pool = deck.filter(x => x !== current);
+  current = pool[Math.floor(Math.random() * pool.length)];
+  kanaEl.style.opacity = '0';
+  kanaEl.style.transform = 'translateY(8px)';
+  setTimeout(() => {
+    kanaEl.textContent = current.k;
+    kanaEl.style.opacity = '1';
+    kanaEl.style.transform = 'translateY(0)';
+  }, 160);
+  romajiEl.textContent = '';
+  transcEl.textContent = '';
+  feedEl.textContent = '';
+  feedEl.className = '';
+  micBtn.className = '';
+  errorEl.textContent = '';
+}
+
+function onResult(transcript, isFinal) {
+  transcEl.textContent = transcript;
+  if (!isFinal) return;
+
+  nTotal++;
+  setScore('score-total', nTotal);
+
+  if (accepted(current.r, transcript)) {
+    nCorrect++;
+    nStreak++;
+    setScore('score-correct', nCorrect);
+    setScore('score-streak', nStreak);
+    micBtn.className = 'correct';
+    feedEl.textContent = '正解';
+    feedEl.className = 'ok';
+    setTimeout(() => next(true), 700);
+  } else {
+    nStreak = 0;
+    setScore('score-streak', nStreak);
+    micBtn.className = 'wrong';
+    feedEl.textContent = '違う';
+    feedEl.className = 'err';
+    romajiEl.textContent = current.r;
+    kanaEl.classList.add('flash-wrong');
+    setTimeout(() => kanaEl.classList.remove('flash-wrong'), 500);
+  }
+}
+
+function buildRecog() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    errorEl.textContent = 'SpeechRecognition not supported — try Chrome or Safari.';
+    return null;
+  }
+  const r = new SR();
+  r.lang = 'ja-JP';
+  r.interimResults = true;
+  r.maxAlternatives = 4;
+  r.continuous = false;
+
+  r.onstart = () => {
+    listening = true;
+    micBtn.className = 'listening';
+    transcEl.textContent = '…';
+    feedEl.textContent = '';
+    feedEl.className = '';
+    errorEl.textContent = '';
+  };
+  r.onend = () => {
+    listening = false;
+    if (micBtn.className === 'listening') micBtn.className = '';
+  };
+  r.onerror = e => {
+    listening = false;
+    micBtn.className = '';
+    if (e.error === 'not-allowed') {
+      errorEl.textContent = 'Mic access denied — check browser permissions.';
+    } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
+      errorEl.textContent = 'Error: ' + e.error;
+    }
+  };
+  r.onresult = e => {
+    // collect best short transcript across all alternatives
+    let best = null;
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      for (let j = 0; j < e.results[i].length; j++) {
+        const t = e.results[i][j].transcript.trim();
+        if (!best || t.length < best.length) best = t;
+      }
+      if (e.results[i].isFinal) {
+        onResult(best || '', true);
+        return;
+      }
+    }
+    if (best) onResult(best, false);
+  };
+  return r;
+}
+
+micBtn.addEventListener('click', () => {
+  if (listening) { recog && recog.stop(); return; }
+  if (!recog) recog = buildRecog();
+  if (!recog) return;
+  try { recog.start(); } catch(e) { errorEl.textContent = e.message; }
+});
+
+hintBtn.addEventListener('click', () => { romajiEl.textContent = current.r; });
+skipBtn.addEventListener('click', () => { recog && recog.stop(); pickNext(); });
+
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+    deck = mode === 'hiragana' ? [...hiragana] : mode === 'katakana' ? [...katakana] : [...hiragana, ...katakana];
+    nCorrect = nStreak = nTotal = 0;
+    ['score-correct','score-streak','score-total'].forEach(id => setScore(id, 0));
+    recog && recog.stop();
+    pickNext();
+  });
+});
+
+// init
+kanaEl.style.transition = 'opacity 0.18s, transform 0.18s';
+pickNext();
+</script>
+</body>
+</html>
