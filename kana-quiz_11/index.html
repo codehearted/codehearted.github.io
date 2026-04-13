@@ -6,7 +6,7 @@
 <title>かな — Kana Combat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700&family=DM+Mono:wght@400;500&family=Noto+Serif+JP:wght@400&family=Noto+Sans+JP:wght@400&family=M+PLUS+1p:wght@400&family=Kaisei+Decol:wght@400&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" crossorigin="anonymous"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -809,6 +809,36 @@ const Sounds = {
 
 // ─── WHISPER WASM ────────────────────────────────────────────────────────────// Uses @xenova/transformers (Transformers.js) to run Whisper-tiny entirely in// the browser via WASM. No server, no plugins. Model is ~75MB, downloaded// once from Hugging Face Hub and cached in the browser indefinitely.//// Flow: MediaRecorder → Blob → OfflineAudioContext (resample to 16kHz)//       → Float32Array → whisperPipeline → text → toRomaji → accepted()//// VAD (voice activity detection): RMS energy monitoring via AnalyserNode.// Recording stops when silence detected after speech, or after MAX_MS.const whisperBar  = document.getElementById('whisper-bar');const whisperMsg  = document.getElementById('whisper-msg');const wFill       = document.getElementById('w-fill');function setWhisperProgress(msg, pct) {  whisperBar.classList.add('visible');  whisperMsg.textContent = msg;  wFill.style.width = pct + '%';}function hideWhisperBar() {  whisperBar.classList.remove('visible');}async function loadWhisper() {  if (whisperReady || whisperLoading) return;  whisperLoading = true;  setWhisperProgress('connecting to model hub…', 5);  try {    // Dynamic import — works in regular script tag (no type=module needed)    const { pipeline, env } = await import(      'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js'    );    env.allowRemoteModels = true;    env.allowLocalModels  = false;    // Single thread avoids Safari SharedArrayBuffer issues    env.backends.onnx.wasm.numThreads = 1;    setWhisperProgress('downloading whisper-tiny (~75 MB, cached after first load)…', 10);    whisperPipeline = await pipeline(      'automatic-speech-recognition',      'Xenova/whisper-tiny',      {        quantized: true,        progress_callback: (p) => {          if (p.status === 'downloading') {            const pct = p.total ? Math.round((p.loaded / p.total) * 100) : 0;            setWhisperProgress(`downloading model… ${pct}%`, 10 + pct * 0.8);          } else if (p.status === 'loading') {            setWhisperProgress('loading model into memory…', 92);          } else if (p.status === 'ready') {            setWhisperProgress('whisper ready', 100);          }        }      }    );    whisperReady  = true;    whisperLoading = false;    setWhisperProgress('whisper ready ✓', 100);    setTimeout(hideWhisperBar, 1200);    // Auto-start recognition now that model is ready    if (autoStartEnabled) setTimeout(tryAutoStart, 300);  } catch (err) {    whisperLoading = false;    whisperBar.classList.remove('visible');    errorEl.textContent = 'Whisper failed: ' + err.message + ' — falling back to browser STT';    setSttMode('browser');  }}async function blobToFloat32(blob) {  const arrayBuffer = await blob.arrayBuffer();  // Decode at native sample rate first  const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();  const audioBuf = await decodeCtx.decodeAudioData(arrayBuffer);  decodeCtx.close();  // Resample to 16kHz via OfflineAudioContext (Whisper requires 16kHz)  const targetRate = 16000;  if (audioBuf.sampleRate === targetRate) {    return audioBuf.getChannelData(0);  }  const length = Math.ceil(audioBuf.duration * targetRate);  const offCtx  = new OfflineAudioContext(1, length, targetRate);  const src     = offCtx.createBufferSource();  src.buffer    = audioBuf;  src.connect(offCtx.destination);  src.start(0);  const resampled = await offCtx.startRendering();  return resampled.getChannelData(0);}async function startWhisperListening() {  if (listening || !whisperReady) return;  listening     = true;  resultHandled = false;  try {    whisperStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });  } catch(e) {    listening = false;    errorEl.textContent = 'Mic access denied.';    return;  }  micBtn.className = 'listening';  transcEl.textContent = '…';  if (transcriptClearTimer) clearTimeout(transcriptClearTimer);  errorEl.textContent = '';  // VAD setup  const vadCtx     = new (window.AudioContext || window.webkitAudioContext)();  const src        = vadCtx.createMediaStreamSource(whisperStream);  const analyser   = vadCtx.createAnalyser();  analyser.fftSize = 512;  src.connect(analyser);  const mimeType = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg']    .find(t => MediaRecorder.isTypeSupported(t)) || '';  whisperChunks  = [];  whisperRecorder = new MediaRecorder(whisperStream, mimeType ? { mimeType } : {});  whisperRecorder.ondataavailable = e => { if (e.data.size > 0) whisperChunks.push(e.data); };  whisperRecorder.start(50);  const startTime = Date.now();  let speechDetected = false;  let silenceStart   = null;  const THRESHOLD    = 0.014;  // RMS energy threshold  const SILENCE_MS   = 650;    // silence duration before stopping  const MAX_MS       = 2800;   // absolute max recording time  const vad = () => {    if (!listening) { vadCtx.close(); return; }    const buf = new Float32Array(analyser.fftSize);    analyser.getFloatTimeDomainData(buf);    const rms = Math.sqrt(buf.reduce((s, v) => s + v * v, 0) / buf.length);    if (rms > THRESHOLD) {      speechDetected = true;      silenceStart   = null;    } else if (speechDetected && silenceStart === null) {      silenceStart = Date.now();    }    const elapsed  = Date.now() - startTime;    const timedOut = elapsed > MAX_MS;    const silenced = speechDetected && silenceStart !== null                     && (Date.now() - silenceStart) > SILENCE_MS;    if (silenced || timedOut) {      vadCtx.close();      finishWhisperRecording(speechDetected);    } else {      requestAnimationFrame(vad);    }  };  requestAnimationFrame(vad);}function stopWhisperListening() {  listening = false;  try { whisperRecorder && whisperRecorder.state !== 'inactive' && whisperRecorder.stop(); } catch(e) {}  try { whisperStream && whisperStream.getTracks().forEach(t => t.stop()); } catch(e) {}  if (micBtn.className === 'listening') micBtn.className = '';}async function finishWhisperRecording(hadSpeech) {  listening = false;  // Stop recorder and collect final chunks  await new Promise(resolve => {    whisperRecorder.onstop = resolve;    try { whisperRecorder.stop(); } catch(e) { resolve(); }  });  try { whisperStream.getTracks().forEach(t => t.stop()); } catch(e) {}  if (!hadSpeech) {    micBtn.className = '';    transcEl.textContent = '';    // Nothing heard — restart    if (autoStartEnabled) tryAutoStart();    return;  }  micBtn.className = '';  transcEl.textContent = '⟳';  try {    const blob    = new Blob(whisperChunks, { type: whisperChunks[0]?.type || 'audio/webm' });    const float32 = await blobToFloat32(blob);    const result  = await whisperPipeline(float32, {      language: 'japanese',      task:     'transcribe',      no_speech_threshold: 0.3, // lower = less likely to return empty on short utterances      chunk_length_s: 3,      stride_length_s: 0.5,    });    const text = (result.text || '').trim();    handleFinalResult([text]);  } catch(err) {    errorEl.textContent = 'Whisper error: ' + err.message;    transcEl.textContent = '';    if (autoStartEnabled) setTimeout(tryAutoStart, 800);  }}function setSttMode(mode) {  sttMode = mode;  document.querySelectorAll('.stt-btn').forEach(b => {    b.classList.toggle('active', b.dataset.stt === mode);  });  if (mode === 'whisper' && !whisperReady && !whisperLoading) {    loadWhisper();  }}document.querySelectorAll('.stt-btn').forEach(btn => {  btn.addEventListener('click', () => {    if (btn.dataset.stt === sttMode) return;    recog && recog.stop();    stopWhisperListening();    setSttMode(btn.dataset.stt);  });});
 
+
+// ─── DECK WEIGHTING ──────────────────────────────────────────────────────────
+function weightedPick(pool) {
+  const stats = getCurrentUserStats(profile);
+  const weights = pool.map(entry => {
+    const s = stats[entry.k];
+    const m = masteryScore(s);
+    let w;
+    if (m === null)    w = 1.0;
+    else if (m < 0.33) w = 2.5;
+    else if (m < 0.67) w = 1.6;
+    else               w = 0.5;
+    if (s && s.flagged) w *= (1.1 + Math.random() * 0.1);
+    return w;
+  });
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < pool.length; i++) { r -= weights[i]; if (r <= 0) return pool[i]; }
+  return pool[pool.length - 1];
+}
+
+function updateKanaTypeLabel() {
+  const el = document.getElementById('kana-type-label');
+  if (!el || !current) return;
+  const katakanaChars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+  const isKata = katakanaChars.includes(current.k);
+  el.textContent = isKata ? 'katakana' : 'hiragana';
+  el.className = isKata ? 'katakana' : 'hiragana';
+}
+
 // ─── SHARED STATE ────────────────────────────────────────────────────────────
 let profile = loadProfile();
 let sttMode = 'browser';
@@ -1088,7 +1118,7 @@ function buildRecog() {
   const r = new SR();
   r.lang = 'ja-JP'; r.interimResults = false; r.maxAlternatives = 8; r.continuous = false;
   r.onstart = () => { listening = true; resultHandled = false; micBtn.className = 'listening'; transcEl.textContent = '…'; if(transcriptClearTimer) clearTimeout(transcriptClearTimer); errorEl.textContent = ''; feedEl.textContent = ''; feedEl.className = ''; };
-  r.onend = () => { listening = false; if (micBtn.className === 'listening') micBtn.className = ''; };
+  r.onend = () => { listening = false; if (micBtn.className === 'listening') micBtn.className = ''; if (autoStartEnabled && appMode === 'quiz') setTimeout(tryAutoStart, 100); };
   r.onerror = e => {
     listening = false; micBtn.className = ''; transcEl.textContent = '';
     if (e.error === 'not-allowed') errorEl.textContent = 'Mic access denied.';
@@ -1271,9 +1301,10 @@ function makeKanaSprite(kanaChar, color) {
   const ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, cv.width, cv.height);
   // Background pill
-  const r = parseInt(color.toString(16).padStart(6,'0').slice(0,2), 16);
-  const g = parseInt(color.toString(16).padStart(6,'0').slice(2,4), 16);
-  const b = parseInt(color.toString(16).padStart(6,'0').slice(4,6), 16);
+  const hex = color.toString(16).padStart(6,'0');
+  const r = parseInt(hex.slice(0,2), 16);
+  const g = parseInt(hex.slice(2,4), 16);
+  const b = parseInt(hex.slice(4,6), 16);
   ctx.fillStyle = `rgba(${r},${g},${b},0.2)`;
   ctx.beginPath(); ctx.roundRect(8, 4, cv.width-16, cv.height-8, 12); ctx.fill();
   ctx.strokeStyle = `rgba(${r},${g},${b},0.8)`; ctx.lineWidth = 2;
@@ -1291,8 +1322,9 @@ function makeKanaSprite(kanaChar, color) {
 function spawnEnemy() {
   if (enemies.length >= DIFF[difficulty].maxEnemies) return;
   const pool = gameDeck.filter(e => !enemies.find(en => en.userData.entry.k === e.k));
-  if (!pool.length) return;
-  const entry = weightedPick(pool.length ? pool : gameDeck);
+  const pickFrom = pool.length > 0 ? pool : gameDeck;
+  const entry = weightedPick(pickFrom);
+  if (!entry) return;
   const mesh = makeEnemyMesh(entry);
   const x = (Math.random() - 0.5) * 30;
   const y = (Math.random() - 0.5) * 10 + 1;
@@ -1469,8 +1501,7 @@ function startGame() {
   document.getElementById('game-over').classList.remove('show');
   updateGameStreakHUD();
   gameDeck = quizMode === 'hiragana' ? [...hiragana] : quizMode === 'katakana' ? [...katakana] : [...hiragana,...katakana];
-  lastTime = performance.now();
-  gameAnimId = requestAnimationFrame(gameAnimFrame);
+  gameAnimId = requestAnimationFrame(ts => { lastTime = ts; gameAnimId = requestAnimationFrame(gameAnimFrame); });
   startGameSTT();
 }
 
