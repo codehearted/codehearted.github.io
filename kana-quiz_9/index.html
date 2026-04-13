@@ -528,6 +528,16 @@ const PHONETIC_ALTS = {
   ro:['roh','loh'], wa:['wah'], n:['en','un'],
 };
 
+function syllableMatch(converted, v) {
+  let idx = converted.indexOf(v);
+  while (idx !== -1) {
+    const before = idx > 0 ? converted[idx - 1] : null;
+    if (before === null || 'aeiou'.includes(before)) return true;
+    idx = converted.indexOf(v, idx + 1);
+  }
+  return false;
+}
+
 function accepted(entry, allTranscripts) {
   const target = entry.r;
   const variants = ROMAJI_VARIANTS[target] || [target];
@@ -535,21 +545,11 @@ function accepted(entry, allTranscripts) {
 
   for (const raw of allTranscripts) {
     const converted = toRomaji(raw);
-
     for (const v of variants) {
-      if (converted === v) return true;
-      if (converted.startsWith(v)) {
-        const rest = converted.slice(v.length);
-        // Allow up to 2 chars of trailing STT noise
-        if (rest.length <= 2) return true;
-      }
+      if (converted === v || syllableMatch(converted, v)) return true;
     }
-
-    // Phonetic English fallback (e.g. "car"→ka, "knee"→ni)
     const t = raw.toLowerCase().trim().replace(/[.,!?。、\s]/g, '');
     if (phonetic.some(p => t === p)) return true;
-
-    // Direct kana char equality
     if (raw.trim() === entry.k) return true;
   }
   return false;
@@ -637,12 +637,12 @@ const Sounds = {
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(320, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(210, ctx.currentTime + 0.35);
-    gain.gain.setValueAtTime(0.18, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
-    return 550; // ms to wait before mic restarts
+    osc.frequency.setValueAtTime(300, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.18);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.28);
+    return 280; // ms — restart mic immediately after sound ends
   },
 
   // Short click/beep to confirm mic has restarted
@@ -1059,17 +1059,12 @@ function onWrong() {
     feedEl.textContent = '聞いて · repeat after';
     feedEl.className = 'err';
     speakKana(current);
-    micRestartDelay = 1800; // wait for TTS to finish
+    micRestartDelay = 1400; // enough for TTS to start before mic opens
   }
 
   // Restart mic after pause — keeps hands-free loop going
   if (autoStartEnabled) {
-    setTimeout(() => {
-      if (!listening) {
-        Sounds.ready();
-        setTimeout(tryAutoStart, 120);
-      }
-    }, micRestartDelay);
+    setTimeout(() => { if (!listening) tryAutoStart(); }, micRestartDelay);
   }
 }
 
@@ -1143,7 +1138,10 @@ function buildRecog() {
     micBtn.className = '';
     transcEl.textContent = '';
     if (e.error === 'not-allowed') errorEl.textContent = 'Mic access denied — check browser permissions.';
-    else if (e.error !== 'no-speech' && e.error !== 'aborted') errorEl.textContent = 'Error: ' + e.error;
+    else if (e.error === 'no-speech') {
+      if (autoStartEnabled) setTimeout(tryAutoStart, 150);
+    }
+    else if (e.error !== 'aborted') errorEl.textContent = 'Error: ' + e.error;
   };
   r.onresult = e => {
     const allAlts = [];
