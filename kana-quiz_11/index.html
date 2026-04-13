@@ -78,6 +78,14 @@ body.quiz-active::before {
 #hud-mode-label { position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
   font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.12em; }
 /* Beam cannon indicator */
+#pause-menu {
+  position: fixed; inset: 0; background: rgba(6,8,16,0.85);
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1.2rem; z-index: 55; pointer-events: all;
+}
+#pause-menu.show { display: flex; }
+#pause-menu h3 { font-family: var(--font-jp); font-size: 22px; color: var(--accent); }
+#pause-menu .pm-row { display: flex; gap: 10px; }
 #beam-active { position: absolute; top: 52px; left: 50%; transform: translateX(-50%);
   font-size: 11px; color: #00ffcc; letter-spacing: 0.1em; opacity: 0; transition: opacity 0.3s; }
 #beam-active.on { opacity: 1; }
@@ -338,6 +346,19 @@ body.quiz-active::before {
     <button class="go-btn" id="go-menu-btn">← menu</button>
   </div>
 </div>
+
+  <!-- Pause menu -->
+  <div id="pause-menu">
+    <h3>⏸ paused</h3>
+    <div style="font-size:11px;color:var(--text-dim);letter-spacing:0.1em;">DIFFICULTY</div>
+    <div class="pm-row">
+      <button class="diff-btn active" data-diff="normal">normal</button>
+      <button class="diff-btn" data-diff="hard">hard</button>
+      <button class="diff-btn" data-diff="insane">insane</button>
+    </div>
+    <button class="go-btn" id="resume-btn">▶ resume</button>
+    <button class="go-btn" id="pause-menu-btn">← menu</button>
+  </div>
 
 <script>
 // SHARED ENGINE
@@ -1268,24 +1289,23 @@ function initGame() {
   horizon.rotation.x = -Math.PI/2; horizon.position.set(0,-8,-300);
   scene.add(horizon);
 
-  // Player ship (simple wedge visible at bottom of screen)
-  const shipGeo = new THREE.ConeGeometry(0.8, 3, 4);
-  shipGeo.rotateX(-Math.PI/2);
-  const shipMat = new THREE.MeshStandardMaterial({ color:0x88ccff, metalness:0.8, roughness:0.2, emissive:0x224488, emissiveIntensity:0.3 });
-  const shipMesh = new THREE.Mesh(shipGeo, shipMat);
-  shipMesh.position.set(0, 2, 15);
-  scene.add(shipMesh);
-  // Engine glow
-  const engGeo = new THREE.SphereGeometry(0.4, 8, 8);
-  const engMat = new THREE.MeshBasicMaterial({ color:0xff6600 });
-  const eng = new THREE.Mesh(engGeo, engMat);
-  eng.position.set(0, 2, 17);
-  scene.add(eng);
-  // Wing lights
-  [-1.2, 1.2].forEach(x => {
-    const wl = new THREE.Mesh(new THREE.SphereGeometry(0.15,6,6), new THREE.MeshBasicMaterial({color: x<0 ? 0xff0000 : 0x00ff00}));
-    wl.position.set(x*1.5, 2, 15.5); scene.add(wl);
+  // Cockpit HUD elements — two glowing reticle lines at screen edges
+  // (actual cockpit art would go here; for now just engine glow hints at edges)
+  const engL = new THREE.Mesh(new THREE.SphereGeometry(0.3,6,6), new THREE.MeshBasicMaterial({color:0xff6600, transparent:true, opacity:0.7}));
+  engL.position.set(-2, 3.2, 8); scene.add(engL);
+  const engR = new THREE.Mesh(new THREE.SphereGeometry(0.3,6,6), new THREE.MeshBasicMaterial({color:0xff6600, transparent:true, opacity:0.7}));
+  engR.position.set(2, 3.2, 8); scene.add(engR);
+  // Cockpit frame lines — left and right edge struts
+  const strutMat = new THREE.LineBasicMaterial({color:0x334466, transparent:true, opacity:0.5});
+  [[-3.5,2.5,6,-2.5,3,9],[-3.5,2.5,6,-4,1,9],[3.5,2.5,6,2.5,3,9],[3.5,2.5,6,4,1,9]].forEach(p => {
+    const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(p[0],p[1],p[2]), new THREE.Vector3(p[3],p[4],p[5])]);
+    scene.add(new THREE.Line(g, strutMat));
   });
+  // Crosshair in center
+  const xhMat = new THREE.LineBasicMaterial({color:0x00ff88, transparent:true, opacity:0.4});
+  const xhH = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.3,3.5,9),new THREE.Vector3(0.3,3.5,9)]);
+  const xhV = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,3.2,9),new THREE.Vector3(0,3.8,9)]);
+  scene.add(new THREE.Line(xhH, xhMat)); scene.add(new THREE.Line(xhV, xhMat));
 
   spawnTimer = 0; gameTime = 0; groundOffset = 0;
   window.addEventListener('resize', onGameResize);
@@ -1387,25 +1407,48 @@ function spawnEnemy() {
 function fireLaser(target) {
   if (!target || !enemies.includes(target)) return;
 
-  // Visual bolt from camera to target
-  const dir = target.position.clone().sub(camera.position);
-  const dist = dir.length();
-  const mid = camera.position.clone().addScaledVector(dir.normalize(), dist * 0.5);
-  const geo = new THREE.CylinderGeometry(beamActive?0.18:0.07, beamActive?0.18:0.07, dist, 6);
-  geo.rotateX(Math.PI/2);
-  const mat = new THREE.MeshBasicMaterial({ color: beamActive ? 0x00ffcc : 0x44aaff, transparent:true, opacity:0.9 });
-  const bolt = new THREE.Mesh(geo, mat);
-  bolt.position.copy(mid);
-  bolt.lookAt(target.position);
-  bolt.rotateX(Math.PI/2);
-  scene.add(bolt);
-  setTimeout(() => scene.remove(bolt), 120);
+  // TWO laser beams — one from left side of cockpit, one from right
+  // Origins are world-space positions off each side of camera
+  const laserColor = beamActive ? 0x00ffcc : 0x44aaff;
+  const laserMat = new THREE.LineBasicMaterial({color: laserColor, linewidth: 2});
+  // Compute right vector from camera
+  const camRight = new THREE.Vector3();
+  camera.getWorldDirection(camRight); // forward
+  const up = new THREE.Vector3(0,1,0);
+  const right = new THREE.Vector3().crossVectors(camRight, up).normalize();
 
-  // Muzzle flash
-  const flash = new THREE.Mesh(new THREE.SphereGeometry(0.5,8,8), new THREE.MeshBasicMaterial({color:0xffffff}));
-  flash.position.copy(camera.position).add(new THREE.Vector3(0,-0.5,-2));
-  scene.add(flash);
-  setTimeout(() => scene.remove(flash), 80);
+  // Left beam origin: camera pos shifted left and slightly down/forward
+  const originL = camera.position.clone()
+    .addScaledVector(right, -3.5)
+    .add(new THREE.Vector3(0, -0.8, 0));
+  // Right beam origin
+  const originR = camera.position.clone()
+    .addScaledVector(right, 3.5)
+    .add(new THREE.Vector3(0, -0.8, 0));
+
+  const endPt = target.position.clone();
+
+  [originL, originR].forEach(origin => {
+    const pts = [origin, endPt];
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const beam = new THREE.Line(geo, laserMat.clone());
+    scene.add(beam);
+    // Fade out
+    let age = 0;
+    const fade = () => {
+      age += 16;
+      beam.material.opacity = Math.max(0, 1 - age/200);
+      if (age < 200) setTimeout(fade, 16); else scene.remove(beam);
+    };
+    setTimeout(fade, 16);
+  });
+
+  // Muzzle flashes at origins
+  [originL, originR].forEach(origin => {
+    const flash = new THREE.Mesh(new THREE.SphereGeometry(0.4,6,6), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true}));
+    flash.position.copy(origin); scene.add(flash);
+    setTimeout(()=>scene.remove(flash), 80);
+  });
 
   // Hit flash on target
   const hflash = new THREE.Mesh(new THREE.SphereGeometry(1.5,8,8), new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.6}));
@@ -1555,11 +1598,13 @@ function gameLoop(dt) {
   spawnInterval = cfg.spawnMin + (1-ramp) * (cfg.spawnMax - cfg.spawnMin);
   if (spawnTimer >= spawnInterval) { spawnTimer=0; spawnEnemy(); }
 
-  // Scroll ground
-  groundOffset += speed * 0.5;
-  if (groundMesh) {
-    groundMesh.material.map.offset.y = groundOffset * 0.005;
-    groundMesh.material.map.needsUpdate = false; // CanvasTexture doesn't need this
+  // Scroll ground — fixed speed independent of difficulty
+  // CanvasTexture requires needsUpdate=true only on pixel changes; for UV offset just update the offset
+  const GROUND_SPEED = 0.18; // fixed scroll rate regardless of difficulty
+  groundOffset += GROUND_SPEED * dt;
+  if (groundMesh && groundMesh.material.map) {
+    groundMesh.material.map.offset.y = groundOffset;
+    groundMesh.material.map.needsUpdate = true;
   }
 
   // Plane controls — move the ship/camera through the world
@@ -1727,13 +1772,7 @@ function processGameSpeech(alts) {
   }
 }
 
-// Difficulty selector
-document.querySelectorAll('.diff-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active'); difficulty=btn.dataset.diff;
-  });
-});
+// (diff-btn listeners wired above)
 document.getElementById('play-again-btn').addEventListener('click', () => {
   document.getElementById('game-over').classList.remove('show');
   enemies.forEach(e=>scene&&scene.remove(e)); enemies=[];
@@ -1742,10 +1781,45 @@ document.getElementById('play-again-btn').addEventListener('click', () => {
   startGame();
 });
 document.getElementById('go-menu-btn').addEventListener('click', showMenu);
+document.getElementById('resume-btn').addEventListener('click', () => {
+  const pm = document.getElementById('pause-menu');
+  if (pm) pm.classList.remove('show');
+  gameRunning = true;
+  gameAnimId = requestAnimationFrame(ts => { lastGameTime=ts; gameAnimId=requestAnimationFrame(gameAnimFrame); });
+});
+document.getElementById('pause-menu-btn').addEventListener('click', () => {
+  document.getElementById('pause-menu').classList.remove('show');
+  showMenu();
+});
+// Sync diff buttons in pause menu
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); difficulty=btn.dataset.diff;
+  });
+});
 
 // Keyboard
 window.addEventListener('keydown', e => {
   keys[e.key] = true;
+  // Escape / P = pause
+  if ((e.key === 'Escape' || e.key === 'p' || e.key === 'P') && appMode === 'game') {
+    e.preventDefault();
+    const pm = document.getElementById('pause-menu');
+    if (pm) {
+      const isPaused = pm.classList.contains('show');
+      pm.classList.toggle('show');
+      gameRunning = !isPaused;
+      if (!isPaused) {
+        // Paused — stop anim
+        if (gameAnimId) { cancelAnimationFrame(gameAnimId); gameAnimId = null; }
+      } else {
+        // Resumed
+        gameAnimId = requestAnimationFrame(ts => { lastGameTime = ts; gameAnimId = requestAnimationFrame(gameAnimFrame); });
+      }
+    }
+    return;
+  }
   // Space bar = fire at nearest enemy
   if (e.key === ' ' && gameRunning && enemies.length) {
     e.preventDefault();
