@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>かな — Kana Voice Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700&family=DM+Mono:wght@400;500&family=Noto+Serif+JP:wght@400&family=Noto+Sans+JP:wght@400&family=M+PLUS+1p:wght@400&family=Kaisei+Decol:wght@400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0f;
+    --surface: #161618;
+    --border: rgba(255,255,255,0.08);
+    --border-med: rgba(255,255,255,0.14);
+    --text: #f0ede8;
+    --text-muted: rgba(240,237,232,0.45);
+    --text-dim: rgba(240,237,232,0.2);
+    --accent: #c8a97e;
+    --accent-dim: rgba(200,169,126,0.15);
+    --green: #6fcf8e;
+    --green-dim: rgba(111,207,142,0.12);
+    --red: #e06c6c;
+    --red-dim: rgba(224,108,108,0.12);
+    --radius: 12px;
+    --font-jp: 'Shippori Mincho', serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-mono); -webkit-font-smoothing: antialiased; }
+
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem 1rem; }
+
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none; z-index: 0;
+  }
+
+  #app { position: relative; z-index: 1; width: 100%; max-width: 440px; display: flex; flex-direction: column; align-items: center; }
+
+  header { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+
+  .title { font-family: var(--font-jp); font-size: 20px; color: var(--accent); letter-spacing: 0.1em; }
+
+  .tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 3px; }
+  .tab { font-family: var(--font-mono); font-size: 11px; padding: 4px 10px; border-radius: 5px; border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.15s; letter-spacing: 0.03em; }
+  .tab.active { background: var(--accent-dim); color: var(--accent); }
+
+  .card {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2rem 2rem 1.75rem; display: flex;
+    flex-direction: column; align-items: center; position: relative; overflow: hidden;
+  }
+  .card::before, .card::after { content: ''; position: absolute; width: 24px; height: 24px; border-color: var(--accent); border-style: solid; opacity: 0.35; }
+  .card::before { top: 12px; left: 12px; border-width: 1px 0 0 1px; }
+  .card::after  { bottom: 12px; right: 12px; border-width: 0 1px 1px 0; }
+
+  #kana-display {
+    font-size: 130px; line-height: 1; color: var(--text);
+    margin: 0 0 0; transition: opacity 0.18s, transform 0.18s;
+    text-shadow: 0 0 60px rgba(200,169,126,0.12);
+    cursor: pointer; user-select: none;
+  }
+  #kana-display:hover { opacity: 0.8; }
+  #kana-display.flash-correct { color: var(--green); text-shadow: 0 0 40px rgba(111,207,142,0.3); }
+  #kana-display.flash-wrong { color: var(--red); }
+
+  #alt-fonts {
+    display: flex; gap: 20px; justify-content: center; align-items: center;
+    min-height: 52px; margin: 4px 0 0;
+  }
+  .alt-char {
+    font-size: 42px; line-height: 1; color: var(--text-muted);
+    opacity: 0; transform: scale(0.85);
+    transition: opacity 0.35s, transform 0.35s;
+    cursor: pointer; user-select: none;
+  }
+  .alt-char.visible { opacity: 1; transform: scale(1); }
+
+  #romaji-hint {
+    font-size: 14px; color: var(--text-muted); height: 22px;
+    letter-spacing: 0.1em; margin-bottom: 1.5rem;
+    transition: color 0.2s; cursor: pointer; user-select: none;
+  }
+  #romaji-hint:not(:empty):hover { color: var(--text); }
+
+  #mic-btn {
+    width: 72px; height: 72px; border-radius: 50%;
+    border: 1px solid var(--border-med); background: transparent;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; margin-bottom: 1.25rem;
+  }
+  #mic-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+  #mic-btn.listening { border-color: var(--green); background: var(--green-dim); animation: mic-pulse 1.6s ease-in-out infinite; }
+  #mic-btn.correct { border-color: var(--green); background: var(--green-dim); }
+  #mic-btn.wrong { border-color: var(--red); background: var(--red-dim); }
+
+  @keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(111,207,142,0.25); }
+    50%       { box-shadow: 0 0 0 12px rgba(111,207,142,0); }
+  }
+  #mic-btn svg { width: 26px; height: 26px; transition: color 0.2s; }
+  #mic-btn.listening svg { color: var(--green); }
+  #mic-btn.correct svg  { color: var(--green); }
+  #mic-btn.wrong svg    { color: var(--red); }
+
+  #transcript { font-size: 20px; min-height: 30px; color: var(--text-muted); letter-spacing: 0.06em; margin-bottom: 0.3rem; text-align: center; }
+
+  #feedback { font-size: 12px; height: 18px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); text-align: center; margin-bottom: 1.5rem; }
+  #feedback.ok  { color: var(--green); }
+  #feedback.err { color: var(--red); }
+
+  .actions { display: flex; gap: 8px; }
+  .action-btn { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+  .action-btn:hover { border-color: var(--border-med); color: var(--text); }
+  .action-btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+  .scores {
+    width: 100%; display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px; margin-top: 1.25rem;
+  }
+  .score-cell { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 0.5rem; text-align: center; }
+  .score-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .score-num { font-size: 20px; font-weight: 500; color: var(--text); }
+  #score-streak .score-num { color: var(--accent); }
+  #score-pct .score-num { color: var(--text-muted); font-size: 16px; }
+
+  .score-actions { width: 100%; display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
+  .score-actions .action-btn { font-size: 10px; padding: 4px 10px; }
+
+  #error { margin-top: 0.75rem; font-size: 12px; color: var(--red); text-align: center; letter-spacing: 0.04em; min-height: 18px; }
+  #instruction { margin-top: 1.5rem; font-size: 11px; color: var(--text-dim); letter-spacing: 0.05em; text-align: center; line-height: 1.8; }
+
+  /* stt mode toggle */
+  .stt-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 1rem;
+  }
+  .stt-btn {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-med);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .stt-btn.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  #whisper-bar {
+    width: 100%;
+    margin-bottom: 0.75rem;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+  }
+  #whisper-bar.visible { display: flex; }
+  #whisper-msg {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+  .w-track {
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #w-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.25s;
+  }
+
+  /* ── per-symbol stats bar ── */
+  #symbol-stats {
+    width: 100%; margin-top: 6px; margin-bottom: 2px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    min-height: 36px;
+  }
+  .sym-stat-row {
+    display: flex; align-items: center; gap: 8px; font-size: 11px;
+    color: var(--text-dim); letter-spacing: 0.05em;
+  }
+  .sym-stat-row .hits { color: var(--green); }
+  .sym-stat-row .misses { color: var(--red); }
+  .sym-stat-row .flag { color: var(--accent); font-size: 10px; }
+  .mastery-track {
+    width: 120px; height: 3px; background: var(--border);
+    border-radius: 2px; overflow: hidden;
+  }
+  .mastery-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--red) 0%, var(--accent) 50%, var(--green) 100%);
+    transition: width 0.4s;
+  }
+
+  /* ── romaji answer display ── */
+  #romaji-answer {
+    font-size: 22px; font-weight: 500; letter-spacing: 0.12em;
+    color: var(--green); text-align: center; min-height: 28px;
+    margin-top: 2px; margin-bottom: 4px; opacity: 0;
+    transition: opacity 0.25s;
+  }
+  #romaji-answer.visible { opacity: 1; }
+
+  /* ── what was heard display ── */
+  #heard-romaji {
+    font-size: 13px; color: var(--text-muted); text-align: center;
+    min-height: 18px; letter-spacing: 0.08em; margin-top: 2px;
+  }
+
+  /* ── bigger romaji hint ── */
+  #romaji-hint {
+    font-size: 20px !important; color: var(--text-muted); min-height: 28px;
+    letter-spacing: 0.1em; margin-bottom: 1.25rem;
+    transition: color 0.2s; cursor: pointer; user-select: none;
+  }
+  #romaji-hint:not(:empty):hover { color: var(--text); }
+
+  /* ── alt fonts romaji label ── */
+  #alt-romaji {
+    font-size: 16px; color: var(--text-muted); letter-spacing: 0.1em;
+    text-align: center; min-height: 22px; margin-top: 2px;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  #alt-romaji.visible { opacity: 1; }
+
+  /* ── kana type label ── */
+  #kana-type-label {
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 2px; min-height: 14px;
+  }
+  #kana-type-label.hiragana { color: #7ec8c8; }
+  #kana-type-label.katakana { color: #c87ec8; }
+
+  /* ── global stats row ── */
+  #global-stats {
+    width: 100%; margin-top: 8px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .gstat-cell {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.6rem 0.4rem; text-align: center;
+  }
+  .gstat-label { font-size: 9px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px; }
+  .gstat-num { font-size: 15px; font-weight: 500; color: var(--text-muted); }
+  .gstat-num.warn { color: var(--red); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span class="title">かな練習</span>
+    <div class="tabs">
+      <button class="tab active" data-mode="hiragana">hiragana</button>
+      <button class="tab" data-mode="katakana">katakana</button>
+      <button class="tab" data-mode="both">both</button>
+    </div>
+  </header>
+
+
+  <div class="stt-row">
+    <button class="stt-btn active" data-stt="browser">browser stt</button>
+    <button class="stt-btn" data-stt="whisper">whisper local</button>
+  </div>
+  <div id="whisper-bar">
+    <div id="whisper-msg">loading…</div>
+    <div class="w-track"><div id="w-fill"></div></div>
+  </div>
+  <div class="card">
+    <div id="kana-type-label"></div>
+    <div id="kana-display" title="click to hear">あ</div>
+    <div id="alt-fonts"></div>
+    <div id="alt-romaji"></div>
+    <div id="symbol-stats"></div>
+    <div id="romaji-hint" title="click to hear"></div>
+    <div id="romaji-answer"></div>
+    <div id="heard-romaji"></div>
+
+    <button id="mic-btn" title="click to speak">
+      <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" color="var(--text-muted)">
+        <rect x="9.5" y="2.5" width="9" height="14" rx="4.5" fill="none"/>
+        <path d="M5.5 14c0 4.694 3.806 8.5 8.5 8.5s8.5-3.806 8.5-8.5"/>
+        <line x1="14" y1="22.5" x2="14" y2="26"/>
+        <line x1="10" y1="26" x2="18" y2="26"/>
+      </svg>
+    </button>
+
+    <div id="transcript"></div>
+    <div id="feedback"></div>
+
+    <div class="actions">
+      <button class="action-btn" id="hint-btn">hint + speak</button>
+      <button class="action-btn" id="skip-btn">skip →</button>
+    </div>
+  </div>
+
+  <div class="scores">
+    <div class="score-cell" id="score-correct">
+      <div class="score-label">correct</div>
+      <div class="score-num">0</div>
+    </div>
+    <div class="score-cell" id="score-streak">
+      <div class="score-label">streak</div>
+      <div class="score-num">0</div>
+    </div>
+    <div class="score-cell" id="score-total">
+      <div class="score-label">total</div>
+      <div class="score-num">0</div>
+    </div>
+    <div class="score-cell" id="score-pct">
+      <div class="score-label">% correct</div>
+      <div class="score-num">—</div>
+    </div>
+  </div>
+
+  <div class="score-actions">
+    <button class="action-btn danger" id="clear-stats-btn">clear history</button>
+    <button class="action-btn danger" id="reset-btn">reset session</button>
+  </div>
+
+  <div id="global-stats">
+    <div class="gstat-cell"><div class="gstat-label">seen</div><div class="gstat-num" id="gs-seen">0</div></div>
+    <div class="gstat-cell"><div class="gstat-label">avg mastery</div><div class="gstat-num" id="gs-avg">—</div></div>
+    <div class="gstat-cell"><div class="gstat-label">needs work</div><div class="gstat-num warn" id="gs-struggling">0</div></div>
+    <div class="gstat-cell"><div class="gstat-label">mastered</div><div class="gstat-num" id="gs-mastered">0</div></div>
+  </div>
+  <div id="error"></div>
+  <div id="instruction">tap kana/romaji to hear · browser or whisper stt · mic auto-starts · 3 strikes speaks aloud</div>
+</div>
+
+<script>
+// ─── FONTS ──────────────────────────────────────────────────────────────────
+const FONTS = [
+  'Shippori Mincho',
+  'Noto Serif JP',
+  'Noto Sans JP',
+  'M PLUS 1p',
+  'Kaisei Decol'
+];
+
+function pickFont(exclude = []) {
+  const pool = FONTS.filter(f => !exclude.includes(f));
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ─── KANA DATA ───────────────────────────────────────────────────────────────
+const hiragana = [
+  {k:'あ',r:'a'},{k:'い',r:'i'},{k:'う',r:'u'},{k:'え',r:'e'},{k:'お',r:'o'},
+  {k:'か',r:'ka'},{k:'き',r:'ki'},{k:'く',r:'ku'},{k:'け',r:'ke'},{k:'こ',r:'ko'},
+  {k:'さ',r:'sa'},{k:'し',r:'shi'},{k:'す',r:'su'},{k:'せ',r:'se'},{k:'そ',r:'so'},
+  {k:'た',r:'ta'},{k:'ち',r:'chi'},{k:'つ',r:'tsu'},{k:'て',r:'te'},{k:'と',r:'to'},
+  {k:'な',r:'na'},{k:'に',r:'ni'},{k:'ぬ',r:'nu'},{k:'ね',r:'ne'},{k:'の',r:'no'},
+  {k:'は',r:'ha'},{k:'ひ',r:'hi'},{k:'ふ',r:'fu'},{k:'へ',r:'he'},{k:'ほ',r:'ho'},
+  {k:'ま',r:'ma'},{k:'み',r:'mi'},{k:'む',r:'mu'},{k:'め',r:'me'},{k:'も',r:'mo'},
+  {k:'や',r:'ya'},{k:'ゆ',r:'yu'},{k:'よ',r:'yo'},
+  {k:'ら',r:'ra'},{k:'り',r:'ri'},{k:'る',r:'ru'},{k:'れ',r:'re'},{k:'ろ',r:'ro'},
+  {k:'わ',r:'wa'},{k:'を',r:'wo'},{k:'ん',r:'n'}
+];
+
+const kMap = {'あ':'ア','い':'イ','う':'ウ','え':'エ','お':'オ','か':'カ','き':'キ','く':'ク','け':'ケ','こ':'コ','さ':'サ','し':'シ','す':'ス','せ':'セ','そ':'ソ','た':'タ','ち':'チ','つ':'ツ','て':'テ','と':'ト','な':'ナ','に':'ニ','ぬ':'ヌ','ね':'ネ','の':'ノ','は':'ハ','ひ':'ヒ','ふ':'フ','へ':'ヘ','ほ':'ホ','ま':'マ','み':'ミ','む':'ム','め':'メ','も':'モ','や':'ヤ','ゆ':'ユ','よ':'ヨ','ら':'ラ','り':'リ','る':'ル','れ':'レ','ろ':'ロ','わ':'ワ','を':'ヲ','ん':'ン'};
+const katakana = hiragana.map(h => ({...h, k: kMap[h.k]}));
+
+// ─── ROMANIZATION SYSTEM ────────────────────────────────────────────────────
+//
+// Language-configurable romanizer. toRomaji(text, lang) converts any script
+// to a romaji string by processing characters left-to-right:
+//   1. Two-char pair lookup (combination kana, numeric compounds)
+//   2. Small-tsu doubling (っ/ッ → doubles next consonant)
+//   3. Single-char lookup (hiragana, katakana, kanji, digits)
+//   4. Latin passthrough (already romaji)
+//   5. Everything else stripped (noise, punctuation, elongation marks)
+//
+// To add a new language: define a LANG_XX object with pairs, chars,
+// doubleConsonant, and elongation sets, then pass it to toRomaji().
+//
+// Kanji note: single "representative" kanji readings are in chars (sufficient
+// for STT output matching). Full kanji word support (e.g. 東京→tokyo) requires
+// a dictionary layer — see FEATURES.md. That layer would pre-process text
+// before handing it to toRomaji().
+
+const LANG_JA = {
+  name: 'Japanese',
+
+  // Two-char sequences checked BEFORE single chars.
+  pairs: {
+    // Combination kana (hiragana)
+    'きゃ':'kya','きゅ':'kyu','きょ':'kyo',
+    'しゃ':'sha','しゅ':'shu','しょ':'sho',
+    'ちゃ':'cha','ちゅ':'chu','ちょ':'cho',
+    'にゃ':'nya','にゅ':'nyu','にょ':'nyo',
+    'ひゃ':'hya','ひゅ':'hyu','ひょ':'hyo',
+    'みゃ':'mya','みゅ':'myu','みょ':'myo',
+    'りゃ':'rya','りゅ':'ryu','りょ':'ryo',
+    'ぎゃ':'gya','ぎゅ':'gyu','ぎょ':'gyo',
+    'じゃ':'ja', 'じゅ':'ju', 'じょ':'jo',
+    'びゃ':'bya','びゅ':'byu','びょ':'byo',
+    'ぴゃ':'pya','ぴゅ':'pyu','ぴょ':'pyo',
+    // Combination kana (katakana)
+    'キャ':'kya','キュ':'kyu','キョ':'kyo',
+    'シャ':'sha','シュ':'shu','ショ':'sho',
+    'チャ':'cha','チュ':'chu','チョ':'cho',
+    'ニャ':'nya','ニュ':'nyu','ニョ':'nyo',
+    'ヒャ':'hya','ヒュ':'hyu','ヒョ':'hyo',
+    'ミャ':'mya','ミュ':'myu','ミョ':'myo',
+    'リャ':'rya','リュ':'ryu','リョ':'ryo',
+    'ギャ':'gya','ギュ':'gyu','ギョ':'gyo',
+    'ジャ':'ja', 'ジュ':'ju', 'ジョ':'jo',
+    'ビャ':'bya','ビュ':'byu','ビョ':'byo',
+    'ピャ':'pya','ピュ':'pyu','ピョ':'pyo',
+    // Numeric compounds
+    '10':'to','１０':'to',
+  },
+
+  // Single-char map: hiragana, katakana, common kanji, digits
+  chars: {
+    // Hiragana
+    'あ':'a','い':'i','う':'u','え':'e','お':'o',
+    'か':'ka','き':'ki','く':'ku','け':'ke','こ':'ko',
+    'さ':'sa','し':'shi','す':'su','せ':'se','そ':'so',
+    'た':'ta','ち':'chi','つ':'tsu','て':'te','と':'to',
+    'な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no',
+    'は':'ha','ひ':'hi','ふ':'fu','へ':'he','ほ':'ho',
+    'ま':'ma','み':'mi','む':'mu','め':'me','も':'mo',
+    'や':'ya','ゆ':'yu','よ':'yo',
+    'ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro',
+    'わ':'wa','を':'wo','ん':'n',
+    // Small kana standalone
+    'ぁ':'a','ぃ':'i','ぅ':'u','ぇ':'e','ぉ':'o',
+    'ゃ':'ya','ゅ':'yu','ょ':'yo',
+    // Dakuten (voiced) — for future dakuten mode
+    'が':'ga','ぎ':'gi','ぐ':'gu','げ':'ge','ご':'go',
+    'ざ':'za','じ':'ji','ず':'zu','ぜ':'ze','ぞ':'zo',
+    'だ':'da','ぢ':'ji','づ':'zu','で':'de','ど':'do',
+    'ば':'ba','び':'bi','ぶ':'bu','べ':'be','ぼ':'bo',
+    'ぱ':'pa','ぴ':'pi','ぷ':'pu','ぺ':'pe','ぽ':'po',
+    // Katakana
+    'ア':'a','イ':'i','ウ':'u','エ':'e','オ':'o',
+    'カ':'ka','キ':'ki','ク':'ku','ケ':'ke','コ':'ko',
+    'サ':'sa','シ':'shi','ス':'su','セ':'se','ソ':'so',
+    'タ':'ta','チ':'chi','ツ':'tsu','テ':'te','ト':'to',
+    'ナ':'na','ニ':'ni','ヌ':'nu','ネ':'ne','ノ':'no',
+    'ハ':'ha','ヒ':'hi','フ':'fu','ヘ':'he','ホ':'ho',
+    'マ':'ma','ミ':'mi','ム':'mu','メ':'me','モ':'mo',
+    'ヤ':'ya','ユ':'yu','ヨ':'yo',
+    'ラ':'ra','リ':'ri','ル':'ru','レ':'re','ロ':'ro',
+    'ワ':'wa','ヲ':'wo','ン':'n',
+    'ァ':'a','ィ':'i','ゥ':'u','ェ':'e','ォ':'o',
+    'ャ':'ya','ュ':'yu','ョ':'yo',
+    // Dakuten katakana
+    'ガ':'ga','ギ':'gi','グ':'gu','ゲ':'ge','ゴ':'go',
+    'ザ':'za','ジ':'ji','ズ':'zu','ゼ':'ze','ゾ':'zo',
+    'ダ':'da','ヂ':'ji','ヅ':'zu','デ':'de','ド':'do',
+    'バ':'ba','ビ':'bi','ブ':'bu','ベ':'be','ボ':'bo',
+    'パ':'pa','ピ':'pi','プ':'pu','ペ':'pe','ポ':'po',
+    // Common kanji STT returns for kana sounds
+    '亜':'a','以':'i','位':'i','絵':'e','御':'o',
+    '花':'ka','火':'ka','科':'ka','香':'ka',
+    '木':'ki','気':'ki','来':'ki',
+    '句':'ku','区':'ku',
+    '毛':'ke','家':'ke',
+    '子':'ko','個':'ko','故':'ko',
+    '差':'sa','左':'sa',
+    '死':'shi','四':'shi','詩':'shi',
+    '素':'su','数':'su',
+    '世':'se','背':'se',
+    '其':'so','祖':'so',
+    '田':'ta','他':'ta',
+    '千':'chi','知':'chi','地':'chi',
+    '都':'tsu','津':'tsu','中':'tsu',  // STT artifact: appears when saying つ
+    '手':'te','天':'te',
+    '戸':'to','十':'to',
+    '名':'na','何':'na',
+    '二':'ni','日':'ni','似':'ni',
+    '奴':'nu',
+    '根':'ne','音':'ne',
+    '野':'no','乃':'no',
+    '葉':'ha','歯':'ha','波':'ha',
+    '比':'hi',
+    '不':'fu','風':'fu',
+    '辺':'he','経':'he',
+    '保':'ho','本':'ho',
+    '間':'ma','真':'ma','馬':'ma',
+    '見':'mi','実':'mi','身':'mi',
+    '無':'mu','夢':'mu',
+    '目':'me','女':'me',
+    '物':'mo','者':'mo',
+    '屋':'ya','也':'ya',
+    '由':'yu','湯':'yu',
+    '余':'yo','与':'yo',
+    '利':'ri','理':'ri','里':'ri',
+    '留':'ru','流':'ru',
+    '礼':'re','例':'re',
+    '路':'ro','呂':'ro',
+    '和':'wa','話':'wa',
+    // Kanji numbers → primary kana reading
+    '一':'i','二':'ni','三':'mi','四':'shi','五':'go',
+    '六':'ro','七':'na','八':'ha','九':'ku',
+    // Arabic & full-width digits → Japanese sound
+    '1':'i', '2':'ni','3':'mi','4':'shi','5':'go',
+    '6':'ro','7':'na','8':'ha','9':'ku', '0':'o',
+    '１':'i','２':'ni','３':'mi','４':'shi','５':'go',
+    '６':'ro','７':'na','８':'ha','９':'ku','０':'o',
+  },
+
+  // Characters that double the following consonant (small tsu)
+  doubleConsonant: new Set(['っ','ッ']),
+
+  // Characters that elongate the previous vowel — stripped for matching
+  elongation: new Set(['ー','〜','～']),
+};
+
+/**
+ * Convert text in any supported script to romaji.
+ * Handles single chars, multi-syllable strings, combination kana, small tsu.
+ * Pass a different lang config to support other scripts in future.
+ */
+function toRomaji(text, lang = LANG_JA) {
+  let result = '';
+  let i = 0;
+  while (i < text.length) {
+    // 1. Two-char pair (combination kana, numeric compounds like "10")
+    const pair = text.slice(i, i + 2);
+    if (lang.pairs[pair]) {
+      result += lang.pairs[pair];
+      i += 2;
+      continue;
+    }
+    const ch = text[i];
+
+    // 2. Small tsu — doubles the first consonant of next character
+    if (lang.doubleConsonant.has(ch)) {
+      const nextPair = text.slice(i + 1, i + 3);
+      const nextCh   = text[i + 1] || '';
+      const nextR    = lang.pairs[nextPair] || lang.chars[nextCh] || '';
+      if (nextR && /^[^aeiou]/.test(nextR)) result += nextR[0];
+      i++;
+      continue;
+    }
+
+    // 3. Elongation mark — skip
+    if (lang.elongation.has(ch)) { i++; continue; }
+
+    // 4. Single-char lookup
+    const mapped = lang.chars[ch];
+    if (mapped) { result += mapped; i++; continue; }
+
+    // 5. Latin passthrough (already romaji)
+    if (/[a-zA-Z]/.test(ch)) { result += ch.toLowerCase(); i++; continue; }
+
+    // 6. Strip everything else
+    i++;
+  }
+  return result.replace(/[・\s.,!?。、]/g, '');
+}
+
+/**
+ * Returns all possible romaji readings for a text string.
+ * For kana: always one result. For kanji words: multiple readings possible.
+ * Stub — full kanji support requires a dictionary (kuromoji/WanaKana).
+ * The array return type is intentional for future multi-reading expansion.
+ */
+function getPossibleReadings(text, lang = LANG_JA) {
+  // TODO: for kanji words, return all candidate readings from a dictionary.
+  // e.g. 日 → ['hi', 'nichi', 'bi', 'ka', 'jitsu']
+  return [toRomaji(text, lang)];
+}
+
+// Accepted spelling variants (shi=si, chi=ti, etc.)
+const ROMAJI_VARIANTS = {
+  shi:['shi','si'], chi:['chi','ti'], tsu:['tsu','tu','su','zu'],
+  fu:['fu','hu'], wo:['wo','o','oh'],
+  n:['n','nn','na','en','m'],
+  hi:['hi','he'],  // ひ sounds like "he" to Japanese speakers; STT may return either
+  nu:['nu','noo','new'],
+  ru:['ru','roo','loo','lu'],
+  e:['e','eh','ae'],
+  to:['to','toh','doh'],
+  sha:['sha','sya'], shu:['shu','syu'], sho:['sho','syo'],
+  cha:['cha','tya'], chu:['chu','tyu'], cho:['cho','tyo'],
+  ja:['ja','zya','jya'], ju:['ju','zyu','jyu'], jo:['jo','zyo','jyo'],
+};
+
+// Phonetic English words STT returns when English speakers say Japanese syllables.
+// Needed because latin passthrough in toRomaji() leaves these as English words.
+const PHONETIC_ALTS = {
+  a:['ah','uh','aah'], i:['ee','eee'],
+  u:['oo','ooh'], e:['ay','eh','ae','hey','a'], o:['oh','owe'],
+  ka:['car','kah'], ki:['key','kee'], ku:['coo','koo'],
+  ke:['kay','keh'], ko:['co','go'],
+  sa:['sah'], shi:['she','shee','she'], su:['sue','soo'],
+  se:['say','seh'], so:['soh'],
+  ta:['tah'], chi:['chee','che'], tsu:['tsoo','soo','zoo'],
+  te:['tay','teh'], to:['toe','tow','dough','doe','doh','toh'],
+  na:['nah'],
+  // ni: "knee" is the main one English speakers say; also "nee"
+  ni:['knee','nee','kneel'],
+  // nu: accept "noo" and also "new" and repeated forms
+  nu:['noo','new','nu','nunu','noonu','gnu'],
+  ne:['nay','neh'],
+  // no: "know" is key — STT often transcribes "no" as "know" in ja-JP mode
+  no:['know','noh','knoe'],
+  ha:['hah'],
+  // hi: STT in ja-JP often hears "he" for ひ (correct Japanese pronunciation!)
+  hi:['hee','he','hay','hi'],
+  fu:['foo','who','hoo'],
+  he:['hay','heh','hey'],
+  ho:['hoh'],
+  ma:['mah'], mi:['mee'], mu:['moo'],
+  me:['may','meh'], mo:['moh'],
+  ya:['yah'], yu:['you','yoo'], yo:['yoh'],
+  ra:['rah','la','lah'],
+  ri:['ree','lee'],
+  // ru: STT rarely returns "ru" in english. "roo","loo","rue","roux" are common
+  ru:['roo','loo','rue','roux','ruu','rew'],
+  re:['ray','lay','reh'],
+  ro:['roh','loh'],
+  wa:['wah'],
+  // wo: "oh","whoa","woe" all map here. ja-JP STT often returns を for を
+  wo:['oh','whoa','woe','woh','ooh'],
+  n:['en','un','mm','hmm'],
+};
+
+function syllableMatch(converted, v) {
+  let idx = converted.indexOf(v);
+  while (idx !== -1) {
+    const before = idx > 0 ? converted[idx - 1] : null;
+    if (before === null || 'aeiou'.includes(before)) return true;
+    idx = converted.indexOf(v, idx + 1);
+  }
+  return false;
+}
+
+function accepted(entry, allTranscripts) {
+  const target = entry.r;
+  const variants = ROMAJI_VARIANTS[target] || [target];
+  const phonetic = PHONETIC_ALTS[target] || [];
+
+  for (const raw of allTranscripts) {
+    const converted = toRomaji(raw);
+    for (const v of variants) {
+      if (converted === v || syllableMatch(converted, v)) return true;
+    }
+    const t = raw.toLowerCase().trim().replace(/[.,!?。、\s]/g, '');
+    if (phonetic.some(p => t === p)) return true;
+    if (raw.trim() === entry.k) return true;
+  }
+  return false;
+}
+
+// ─── USER PROFILE ────────────────────────────────────────────────────────────
+const PROFILE_KEY = 'kana_quiz_profile_v1';
+
+function loadProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return {
+    version: 1,
+    currentUser: 'default',
+    users: {
+      default: { name: 'Default', stats: {} }
+    }
+  };
+}
+
+function saveProfile(p) {
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch(e) {}
+}
+
+function getCurrentUserStats(p) {
+  const u = p.users[p.currentUser];
+  if (!u.stats) u.stats = {};
+  return u.stats;
+}
+
+// Mastery score: hits / (misses^0.5 + 1), clamped 0-1
+// 0 = never seen or all wrong, 1 = got it many times with few misses
+function masteryScore(s) {
+  if (!s || s.seen === 0) return null; // null = unseen
+  const c = s.correct || 0;
+  const i = s.incorrect || 0;
+  if (c === 0) return 0;
+  return Math.min(1, c / (Math.sqrt(i) + c));
+}
+
+// Reduce incorrect count by sqrt (streak reward). Special case: 1→0.
+function applyStreakReward(s) {
+  if (!s || s.incorrect <= 0) return;
+  s.incorrect = s.incorrect === 1 ? 0 : Math.floor(Math.sqrt(s.incorrect));
+}
+
+function recordAttempt(p, kanaChar, isCorrect, fontName) {
+  const stats = getCurrentUserStats(p);
+  if (!stats[kanaChar]) stats[kanaChar] = {
+    seen: 0, correct: 0, incorrect: 0, fonts: {},
+    symStreak: 0,  // consecutive correct (any symbol may intervene)
+    flagged: false // user explicitly flagged as hard
+  };
+  const s = stats[kanaChar];
+  s.seen++;
+  if (isCorrect) {
+    s.correct++;
+    s.symStreak = (s.symStreak || 0) + 1;
+    // Streak reward: at 5 in a row, sqrt the incorrect count
+    if (s.symStreak >= 5) {
+      applyStreakReward(s);
+      s.symStreak = 0;
+    }
+    // 5% chance to clear difficulty flag on correct answer
+    if (s.flagged && Math.random() < 0.05) s.flagged = false;
+  } else {
+    s.incorrect++;
+    s.symStreak = 0;
+  }
+  if (!s.fonts[fontName]) s.fonts[fontName] = { correct: 0, incorrect: 0 };
+  if (isCorrect) s.fonts[fontName].correct++; else s.fonts[fontName].incorrect++;
+  saveProfile(p);
+}
+
+function flagCurrentSymbol() {
+  const stats = getCurrentUserStats(profile);
+  if (!stats[current.k]) stats[current.k] = { seen:0, correct:0, incorrect:0, fonts:{}, symStreak:0, flagged:false };
+  stats[current.k].flagged = true;
+  saveProfile(profile);
+  updateSymbolStats();
+  // Visual pulse on kana
+  kanaEl.style.textShadow = '0 0 30px rgba(200,169,126,0.6)';
+  setTimeout(() => kanaEl.style.textShadow = '', 600);
+}
+
+function clearProfileStats(p, mode) {
+  const stats = getCurrentUserStats(p);
+  const deck = mode === 'hiragana' ? hiragana : mode === 'katakana' ? katakana : [...hiragana, ...katakana];
+  deck.forEach(entry => { delete stats[entry.k]; });
+  saveProfile(p);
+}
+
+// ─── SOUND EFFECTS ──────────────────────────────────────────────────────────
+// Generated via Web Audio API — no files needed, works fully offline.
+// AudioContext created on first use to satisfy browser autoplay policy.
+const Sounds = {
+  _ctx: null,
+
+  ctx() {
+    if (!this._ctx) this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return this._ctx;
+  },
+
+  // Bright ascending major-chord arpeggio — rewarding, satisfying
+  correct() {
+    const ctx = this.ctx();
+    [[523.25, 0], [659.25, 0.1], [783.99, 0.2], [1046.5, 0.32]].forEach(([freq, delay]) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + delay;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.28, t + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+      osc.start(t); osc.stop(t + 0.4);
+    });
+    return 600; // ms to wait before next action
+  },
+
+  // Gentle soft descending tone — encouraging, not harsh
+  wrong() {
+    const ctx = this.ctx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(300, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.18);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.28);
+    return 280; // ms — restart mic immediately after sound ends
+  },
+
+  // Short click/beep to confirm mic has restarted
+  ready() {
+    const ctx = this.ctx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15);
+  },
+};
+
+
+// ─── WHISPER WASM ────────────────────────────────────────────────────────────
+// Uses @xenova/transformers (Transformers.js) to run Whisper-tiny entirely in
+// the browser via WASM. No server, no plugins. Model is ~75MB, downloaded
+// once from Hugging Face Hub and cached in the browser indefinitely.
+//
+// Flow: MediaRecorder → Blob → OfflineAudioContext (resample to 16kHz)
+//       → Float32Array → whisperPipeline → text → toRomaji → accepted()
+//
+// VAD (voice activity detection): RMS energy monitoring via AnalyserNode.
+// Recording stops when silence detected after speech, or after MAX_MS.
+
+let sttMode = 'browser';
+let whisperReady = false;
+let whisperLoading = false;
+let whisperPipeline = null;
+let whisperStream = null;
+let whisperRecorder = null;
+let whisperChunks = [];
+
+const whisperBar  = document.getElementById('whisper-bar');
+const whisperMsg  = document.getElementById('whisper-msg');
+const wFill       = document.getElementById('w-fill');
+
+function setWhisperProgress(msg, pct) {
+  whisperBar.classList.add('visible');
+  whisperMsg.textContent = msg;
+  wFill.style.width = pct + '%';
+}
+function hideWhisperBar() {
+  whisperBar.classList.remove('visible');
+}
+
+async function loadWhisper() {
+  if (whisperReady || whisperLoading) return;
+  whisperLoading = true;
+  setWhisperProgress('connecting to model hub…', 5);
+
+  try {
+    // Dynamic import — works in regular script tag (no type=module needed)
+    const { pipeline, env } = await import(
+      'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js'
+    );
+
+    env.allowRemoteModels = true;
+    env.allowLocalModels  = false;
+    // Single thread avoids Safari SharedArrayBuffer issues
+    env.backends.onnx.wasm.numThreads = 1;
+
+    setWhisperProgress('downloading whisper-tiny (~75 MB, cached after first load)…', 10);
+
+    whisperPipeline = await pipeline(
+      'automatic-speech-recognition',
+      'Xenova/whisper-tiny',
+      {
+        quantized: true,
+        progress_callback: (p) => {
+          if (p.status === 'downloading') {
+            const pct = p.total ? Math.round((p.loaded / p.total) * 100) : 0;
+            setWhisperProgress(`downloading model… ${pct}%`, 10 + pct * 0.8);
+          } else if (p.status === 'loading') {
+            setWhisperProgress('loading model into memory…', 92);
+          } else if (p.status === 'ready') {
+            setWhisperProgress('whisper ready', 100);
+          }
+        }
+      }
+    );
+
+    whisperReady  = true;
+    whisperLoading = false;
+    setWhisperProgress('whisper ready ✓', 100);
+    setTimeout(hideWhisperBar, 1200);
+
+    // Auto-start recognition now that model is ready
+    if (autoStartEnabled) setTimeout(tryAutoStart, 300);
+
+  } catch (err) {
+    whisperLoading = false;
+    whisperBar.classList.remove('visible');
+    errorEl.textContent = 'Whisper failed: ' + err.message + ' — falling back to browser STT';
+    setSttMode('browser');
+  }
+}
+
+async function blobToFloat32(blob) {
+  const arrayBuffer = await blob.arrayBuffer();
+  // Decode at native sample rate first
+  const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const audioBuf = await decodeCtx.decodeAudioData(arrayBuffer);
+  decodeCtx.close();
+
+  // Resample to 16kHz via OfflineAudioContext (Whisper requires 16kHz)
+  const targetRate = 16000;
+  if (audioBuf.sampleRate === targetRate) {
+    return audioBuf.getChannelData(0);
+  }
+  const length = Math.ceil(audioBuf.duration * targetRate);
+  const offCtx  = new OfflineAudioContext(1, length, targetRate);
+  const src     = offCtx.createBufferSource();
+  src.buffer    = audioBuf;
+  src.connect(offCtx.destination);
+  src.start(0);
+  const resampled = await offCtx.startRendering();
+  return resampled.getChannelData(0);
+}
+
+async function startWhisperListening() {
+  if (listening || !whisperReady) return;
+  listening     = true;
+  resultHandled = false;
+
+  try {
+    whisperStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch(e) {
+    listening = false;
+    errorEl.textContent = 'Mic access denied.';
+    return;
+  }
+
+  micBtn.className = 'listening';
+  transcEl.textContent = '…';
+  if (transcriptClearTimer) clearTimeout(transcriptClearTimer);
+  errorEl.textContent = '';
+
+  // VAD setup
+  const vadCtx     = new (window.AudioContext || window.webkitAudioContext)();
+  const src        = vadCtx.createMediaStreamSource(whisperStream);
+  const analyser   = vadCtx.createAnalyser();
+  analyser.fftSize = 512;
+  src.connect(analyser);
+
+  const mimeType = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg']
+    .find(t => MediaRecorder.isTypeSupported(t)) || '';
+
+  whisperChunks  = [];
+  whisperRecorder = new MediaRecorder(whisperStream, mimeType ? { mimeType } : {});
+  whisperRecorder.ondataavailable = e => { if (e.data.size > 0) whisperChunks.push(e.data); };
+  whisperRecorder.start(50);
+
+  const startTime = Date.now();
+  let speechDetected = false;
+  let silenceStart   = null;
+  const THRESHOLD    = 0.014;  // RMS energy threshold
+  const SILENCE_MS   = 650;    // silence duration before stopping
+  const MAX_MS       = 2800;   // absolute max recording time
+
+  const vad = () => {
+    if (!listening) { vadCtx.close(); return; }
+
+    const buf = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(buf);
+    const rms = Math.sqrt(buf.reduce((s, v) => s + v * v, 0) / buf.length);
+
+    if (rms > THRESHOLD) {
+      speechDetected = true;
+      silenceStart   = null;
+    } else if (speechDetected && silenceStart === null) {
+      silenceStart = Date.now();
+    }
+
+    const elapsed  = Date.now() - startTime;
+    const timedOut = elapsed > MAX_MS;
+    const silenced = speechDetected && silenceStart !== null
+                     && (Date.now() - silenceStart) > SILENCE_MS;
+
+    if (silenced || timedOut) {
+      vadCtx.close();
+      finishWhisperRecording(speechDetected);
+    } else {
+      requestAnimationFrame(vad);
+    }
+  };
+
+  requestAnimationFrame(vad);
+}
+
+function stopWhisperListening() {
+  listening = false;
+  try { whisperRecorder && whisperRecorder.state !== 'inactive' && whisperRecorder.stop(); } catch(e) {}
+  try { whisperStream && whisperStream.getTracks().forEach(t => t.stop()); } catch(e) {}
+  if (micBtn.className === 'listening') micBtn.className = '';
+}
+
+async function finishWhisperRecording(hadSpeech) {
+  listening = false;
+
+  // Stop recorder and collect final chunks
+  await new Promise(resolve => {
+    whisperRecorder.onstop = resolve;
+    try { whisperRecorder.stop(); } catch(e) { resolve(); }
+  });
+  try { whisperStream.getTracks().forEach(t => t.stop()); } catch(e) {}
+
+  if (!hadSpeech) {
+    micBtn.className = '';
+    transcEl.textContent = '';
+    // Nothing heard — restart
+    if (autoStartEnabled) tryAutoStart();
+    return;
+  }
+
+  micBtn.className = '';
+  transcEl.textContent = '⟳';
+
+  try {
+    const blob    = new Blob(whisperChunks, { type: whisperChunks[0]?.type || 'audio/webm' });
+    const float32 = await blobToFloat32(blob);
+
+    const result  = await whisperPipeline(float32, {
+      language: 'japanese',
+      task:     'transcribe',
+      no_speech_threshold: 0.3, // lower = less likely to return empty on short utterances
+      chunk_length_s: 3,
+      stride_length_s: 0.5,
+    });
+
+    const text = (result.text || '').trim();
+    handleFinalResult([text]);
+  } catch(err) {
+    errorEl.textContent = 'Whisper error: ' + err.message;
+    transcEl.textContent = '';
+    if (autoStartEnabled) setTimeout(tryAutoStart, 800);
+  }
+}
+
+function setSttMode(mode) {
+  sttMode = mode;
+  document.querySelectorAll('.stt-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.stt === mode);
+  });
+  if (mode === 'whisper' && !whisperReady && !whisperLoading) {
+    loadWhisper();
+  }
+}
+
+document.querySelectorAll('.stt-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.stt === sttMode) return;
+    recog && recog.stop();
+    stopWhisperListening();
+    setSttMode(btn.dataset.stt);
+  });
+});
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let profile = loadProfile();
+let mode = 'hiragana';
+let deck = [...hiragana];
+let current = null;
+let currentFont = FONTS[0];
+let nCorrect = 0, nStreak = 0, nTotal = 0;
+let wrongCount = 0;
+let isFirstAttempt = true;
+let recog = null, listening = false;
+let transcriptClearTimer = null;
+let resultHandled = false;
+let autoStartEnabled = false;
+
+// ─── DOM REFS ────────────────────────────────────────────────────────────────
+const kanaEl     = document.getElementById('kana-display');
+const altFontsEl = document.getElementById('alt-fonts');
+const romajiEl   = document.getElementById('romaji-hint');
+const micBtn     = document.getElementById('mic-btn');
+const transcEl   = document.getElementById('transcript');
+const feedEl     = document.getElementById('feedback');
+const hintBtn    = document.getElementById('hint-btn');
+const skipBtn    = document.getElementById('skip-btn');
+const resetBtn   = document.getElementById('reset-btn');
+const clearBtn   = document.getElementById('clear-stats-btn');
+const errorEl    = document.getElementById('error');
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function setScore(id, val) {
+  document.querySelector('#' + id + ' .score-num').textContent = val;
+}
+
+function updatePct() {
+  const pct = nTotal > 0 ? Math.round((nCorrect / nTotal) * 100) + '%' : '—';
+  setScore('score-pct', pct);
+}
+
+function scheduleTranscriptClear(ms) {
+  if (transcriptClearTimer) clearTimeout(transcriptClearTimer);
+  transcriptClearTimer = setTimeout(() => { transcEl.textContent = ''; }, ms);
+}
+
+function speakKana(entry) {
+  if (!window.speechSynthesis) return;
+  const utt = new SpeechSynthesisUtterance(entry.k);
+  utt.lang = 'ja-JP'; utt.rate = 0.8;
+  const voices = speechSynthesis.getVoices();
+  const jpVoice = voices.find(v => v.lang.startsWith('ja'));
+  if (jpVoice) utt.voice = jpVoice;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utt);
+}
+
+function blinkRomaji() {
+  romajiEl.textContent = current.r;
+  let count = 0;
+  const interval = setInterval(() => {
+    romajiEl.style.color = (count % 2 === 0) ? 'var(--green)' : 'var(--text-muted)';
+    count++;
+    if (count >= 6) { clearInterval(interval); romajiEl.style.color = 'var(--green)'; }
+  }, 180);
+}
+
+function showAltFonts() {
+  const alts = FONTS.filter(f => f !== currentFont).sort(() => Math.random() - 0.5).slice(0, 2);
+  altFontsEl.innerHTML = '';
+  alts.forEach((font, i) => {
+    const el = document.createElement('span');
+    el.className = 'alt-char';
+    el.textContent = current.k;
+    el.style.fontFamily = `'${font}', serif`;
+    el.title = font;
+    el.addEventListener('click', () => speakKana(current));
+    altFontsEl.appendChild(el);
+    setTimeout(() => el.classList.add('visible'), 50 + i * 80);
+  });
+  showAltRomaji();
+}
+
+function hideAltFonts() {
+  altFontsEl.querySelectorAll('.alt-char').forEach(el => el.classList.remove('visible'));
+  setTimeout(() => { altFontsEl.innerHTML = ''; }, 400);
+  const ar = document.getElementById('alt-romaji');
+  if (ar) { ar.classList.remove('visible'); ar.textContent = ''; }
+}
+
+function showAltRomaji() {
+  const ar = document.getElementById('alt-romaji');
+  if (!ar || !current) return;
+  ar.textContent = current.r;
+  setTimeout(() => ar.classList.add('visible'), 300);
+}
+
+function updateKanaTypeLabel() {
+  const el = document.getElementById('kana-type-label');
+  if (!el || !current) return;
+  const isKata = Object.values(
+    {'あ':'ア','い':'イ','う':'ウ','え':'エ','お':'オ',
+     'か':'カ','き':'キ','く':'ク','け':'ケ','こ':'コ',
+     'さ':'サ','し':'シ','す':'ス','せ':'セ','そ':'ソ',
+     'た':'タ','ち':'チ','つ':'ツ','て':'テ','と':'ト',
+     'な':'ナ','に':'ニ','ぬ':'ヌ','ね':'ネ','の':'ノ',
+     'は':'ハ','ひ':'ヒ','ふ':'フ','へ':'ヘ','ほ':'ホ',
+     'ま':'マ','み':'ミ','む':'ム','め':'メ','も':'モ',
+     'や':'ヤ','ゆ':'ユ','よ':'ヨ',
+     'ら':'ラ','り':'リ','る':'ル','れ':'レ','ろ':'ロ',
+     'わ':'ワ','を':'ヲ','ん':'ン'}
+  ).includes(current.k);
+  el.textContent = isKata ? 'katakana' : 'hiragana';
+  el.className = isKata ? 'katakana' : 'hiragana';
+}
+
+function updateSymbolStats() {
+  const el = document.getElementById('symbol-stats');
+  if (!el || !current) return;
+  const stats = getCurrentUserStats(profile);
+  const s = stats[current.k];
+  if (!s || s.seen === 0) { el.innerHTML = ''; return; }
+  const m = masteryScore(s);
+  const pct = m !== null ? Math.round(m * 100) : 0;
+  const flagHtml = s.flagged ? '<span class="flag">★ flagged</span>' : '';
+  el.innerHTML = \`
+    <div class="sym-stat-row">
+      <span class="hits">✓ \${s.correct}</span>
+      <span class="misses">✗ \${s.incorrect}</span>
+      \${flagHtml}
+    </div>
+    <div class="mastery-track"><div class="mastery-fill" style="width:\${pct}%"></div></div>
+  \`;
+}
+
+function updateGlobalStats() {
+  const stats = getCurrentUserStats(profile);
+  const allEntries = Object.values(stats);
+  const seen = allEntries.filter(s => s.seen > 0).length;
+  const scores = allEntries.filter(s => s.seen > 0).map(s => masteryScore(s)).filter(m => m !== null);
+  const avg = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length * 100) : null;
+  const struggling = scores.filter(m => m < 0.5).length;
+  const mastered = scores.filter(m => m >= 0.8).length;
+  document.getElementById('gs-seen').textContent = seen;
+  document.getElementById('gs-avg').textContent = avg !== null ? avg + '%' : '—';
+  document.getElementById('gs-struggling').textContent = struggling;
+  document.getElementById('gs-mastered').textContent = mastered;
+}
+
+// ─── PICK NEXT ───────────────────────────────────────────────────────────────
+// Weight each kana for selection:
+// - Unseen: weight 1.0 (baseline)
+// - Struggling (mastery < 0.33): weight 2.5
+// - Needs work (mastery < 0.67): weight 1.6
+// - Flagged by user: +10-20% extra on top
+// - Mastered (mastery >= 0.67): weight 0.5
+function weightedPick(pool) {
+  const stats = getCurrentUserStats(profile);
+  const weights = pool.map(entry => {
+    const s = stats[entry.k];
+    const m = masteryScore(s);
+    let w;
+    if (m === null)  w = 1.0;   // unseen
+    else if (m < 0.33) w = 2.5; // struggling
+    else if (m < 0.67) w = 1.6; // needs work
+    else               w = 0.5; // mastered
+    if (s && s.flagged) w *= (1.1 + Math.random() * 0.1); // +10-20% for flagged
+    return w;
+  });
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < pool.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return pool[i];
+  }
+  return pool[pool.length - 1];
+}
+
+function pickNext() {
+  const pool = deck.filter(x => x !== current);
+  current = weightedPick(pool);
+  currentFont = pickFont();
+  wrongCount = 0;
+  isFirstAttempt = true;
+  resultHandled = false;
+  if (transcriptClearTimer) clearTimeout(transcriptClearTimer);
+  hideAltFonts();
+
+  kanaEl.style.opacity = '0';
+  kanaEl.style.transform = 'translateY(8px)';
+  setTimeout(() => {
+    kanaEl.textContent = current.k;
+    kanaEl.style.fontFamily = `'${currentFont}', serif`;
+    kanaEl.style.opacity = '1';
+    kanaEl.style.transform = 'translateY(0)';
+    updateKanaTypeLabel();
+    updateSymbolStats();
+    updateGlobalStats();
+    // Auto-start recognition
+    if (autoStartEnabled) tryAutoStart();
+  }, 160);
+
+  romajiEl.textContent = '';
+  romajiEl.style.color = 'var(--text-muted)';
+  transcEl.textContent = '';
+  feedEl.textContent = '';
+  feedEl.className = '';
+  micBtn.className = '';
+  errorEl.textContent = '';
+  const ra = document.getElementById('romaji-answer');
+  if (ra) { ra.textContent = ''; ra.classList.remove('visible'); }
+  const hr = document.getElementById('heard-romaji');
+  if (hr) hr.textContent = '';
+}
+
+function tryAutoStart() {
+  if (listening) return;
+  if (sttMode === 'whisper') {
+    if (!whisperReady) return; // model still loading
+    startWhisperListening();
+  } else {
+    recog = buildRecog();
+    if (!recog) return;
+    try { recog.start(); } catch(e) { /* silent fail */ }
+  }
+}
+
+// ─── WRONG HANDLER ───────────────────────────────────────────────────────────
+function onWrong() {
+  wrongCount++;
+  nStreak = 0;
+  setScore('score-streak', nStreak);
+  micBtn.className = 'wrong';
+  kanaEl.classList.add('flash-wrong');
+  setTimeout(() => kanaEl.classList.remove('flash-wrong'), 500);
+  scheduleTranscriptClear(10000);
+
+  const soundDuration = Sounds.wrong(); // play wrong sound, get its duration
+  let micRestartDelay = soundDuration;
+
+  if (wrongCount === 1) {
+    romajiEl.textContent = current.r;
+    romajiEl.style.color = 'var(--text-muted)';
+    feedEl.textContent = '違う — try again';
+    feedEl.className = 'err';
+  } else if (wrongCount === 2) {
+    feedEl.textContent = '違う — listen carefully';
+    feedEl.className = 'err';
+    blinkRomaji();
+  } else {
+    // 3rd+ wrong: speak kana aloud, pause mic until TTS finishes (~1.5s for single kana)
+    romajiEl.textContent = current.r;
+    romajiEl.style.color = 'var(--green)';
+    feedEl.textContent = '聞いて · repeat after';
+    feedEl.className = 'err';
+    speakKana(current);
+    micRestartDelay = 1400; // enough for TTS to start before mic opens
+  }
+
+  // Restart mic after pause — keeps hands-free loop going
+  if (autoStartEnabled) {
+    setTimeout(() => { if (!listening) tryAutoStart(); }, micRestartDelay);
+  }
+}
+
+// ─── RESULT HANDLER ──────────────────────────────────────────────────────────
+function handleFinalResult(allTranscripts) {
+  if (resultHandled) return;
+  resultHandled = true;
+
+  const display = allTranscripts.reduce((a, b) => a.length <= b.length ? a : b, allTranscripts[0] || '');
+  transcEl.textContent = display;
+  const heardR = toRomaji(display);
+  const hr = document.getElementById('heard-romaji');
+  if (hr) hr.textContent = heardR && heardR !== display ? display + ' → ' + heardR : display;
+
+  // Difficulty phrase detection — user signaling they want to flag this symbol
+  const DIFFICULTY_PHRASES = ['difficult','hard','fuck','forgot',"dammit","don't know",
+    'pass','give up','remember','mark','save','what is it','skip it','no idea'];
+  const rawLower = allTranscripts.map(t => t.toLowerCase()).join(' ');
+  if (DIFFICULTY_PHRASES.some(p => rawLower.includes(p))) {
+    flagCurrentSymbol();
+    // Don't count as wrong attempt, just restart mic
+    resultHandled = false;
+    if (autoStartEnabled) setTimeout(tryAutoStart, 400);
+    return;
+  }
+
+  const isCorrect = accepted(current, allTranscripts);
+
+  // Record in profile on first attempt only
+  if (isFirstAttempt) {
+    isFirstAttempt = false;
+    recordAttempt(profile, current.k, isCorrect, currentFont);
+  }
+
+  nTotal++;
+  setScore('score-total', nTotal);
+
+  if (isCorrect) {
+    nCorrect++;
+    nStreak++;
+    setScore('score-correct', nCorrect);
+    setScore('score-streak', nStreak);
+    updatePct();
+    micBtn.className = 'correct';
+    feedEl.textContent = '正解！';
+    feedEl.className = 'ok';
+    kanaEl.classList.add('flash-correct');
+    showAltFonts();
+    Sounds.correct();
+    // Show correct romaji answer prominently
+    const ra = document.getElementById('romaji-answer');
+    if (ra) { ra.textContent = current.r; ra.classList.add('visible'); }
+    updateGlobalStats();
+    setTimeout(() => {
+      kanaEl.classList.remove('flash-correct');
+      pickNext();
+    }, 1200);
+  } else {
+    updatePct();
+    onWrong();
+  }
+}
+
+// ─── SPEECH RECOGNITION ──────────────────────────────────────────────────────
+function buildRecog() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { errorEl.textContent = 'SpeechRecognition not supported — try Safari.'; return null; }
+  const r = new SR();
+  r.lang = 'ja-JP';
+  r.interimResults = false;
+  r.maxAlternatives = 8;
+  r.continuous = false;
+
+  r.onstart = () => {
+    listening = true;
+    resultHandled = false;
+    micBtn.className = 'listening';
+    transcEl.textContent = '…';
+    if (transcriptClearTimer) clearTimeout(transcriptClearTimer);
+    errorEl.textContent = '';
+    feedEl.textContent = '';
+    feedEl.className = '';
+  };
+  r.onend = () => {
+    listening = false;
+    if (micBtn.className === 'listening') micBtn.className = '';
+  };
+  r.onerror = e => {
+    listening = false;
+    micBtn.className = '';
+    transcEl.textContent = '';
+    if (e.error === 'not-allowed') errorEl.textContent = 'Mic access denied — check browser permissions.';
+    else if (e.error === 'no-speech') {
+      if (autoStartEnabled) setTimeout(tryAutoStart, 150);
+    }
+    else if (e.error !== 'aborted') errorEl.textContent = 'Error: ' + e.error;
+  };
+  r.onresult = e => {
+    const allAlts = [];
+    for (let i = 0; i < e.results.length; i++)
+      for (let j = 0; j < e.results[i].length; j++) {
+        const t = e.results[i][j].transcript.trim();
+        if (t) allAlts.push(t);
+      }
+    if (allAlts.length) { r.stop(); handleFinalResult(allAlts); }
+  };
+  return r;
+}
+
+// ─── EVENT LISTENERS ─────────────────────────────────────────────────────────
+micBtn.addEventListener('click', () => {
+  if (listening) {
+    sttMode === 'whisper' ? stopWhisperListening() : recog && recog.stop();
+    return;
+  }
+  autoStartEnabled = true;
+  Sounds.ctx(); // init AudioContext on user gesture
+  if (sttMode === 'whisper') {
+    if (!whisperReady && !whisperLoading) loadWhisper();
+    else if (whisperReady) startWhisperListening();
+  } else {
+    recog = buildRecog();
+    if (!recog) return;
+    try { recog.start(); } catch(e) { errorEl.textContent = e.message; }
+  }
+});
+
+kanaEl.addEventListener('click', () => {
+  speakKana(current);
+  flagCurrentSymbol();
+});
+romajiEl.addEventListener('click', () => { if (current) speakKana(current); });
+
+hintBtn.addEventListener('click', () => {
+  romajiEl.textContent = current.r;
+  speakKana(current);
+});
+
+skipBtn.addEventListener('click', () => {
+  recog && recog.stop();
+  pickNext();
+});
+
+resetBtn.addEventListener('click', () => {
+  nCorrect = nStreak = nTotal = 0;
+  ['score-correct','score-streak','score-total'].forEach(id => setScore(id, 0));
+  setScore('score-pct', '—');
+  updateGlobalStats();
+});
+
+clearBtn.addEventListener('click', () => {
+  const modeLabel = mode.charAt(0).toUpperCase() + mode.slice(1);
+  if (confirm(`Clear learning history for ${modeLabel}? This removes per-character tracking data from localStorage.`)) {
+    clearProfileStats(profile, mode);
+    // Visual confirmation
+    const orig = clearBtn.textContent;
+    clearBtn.textContent = 'cleared ✓';
+    clearBtn.style.color = 'var(--green)';
+    clearBtn.style.borderColor = 'var(--green)';
+    setTimeout(() => {
+      clearBtn.textContent = orig;
+      clearBtn.style.color = '';
+      clearBtn.style.borderColor = '';
+    }, 1500);
+  }
+});
+
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    mode = btn.dataset.mode;
+    deck = mode === 'hiragana' ? [...hiragana] : mode === 'katakana' ? [...katakana] : [...hiragana, ...katakana];
+    nCorrect = nStreak = nTotal = 0;
+    ['score-correct','score-streak','score-total'].forEach(id => setScore(id, 0));
+    setScore('score-pct', '—');
+    recog && recog.stop();
+    updateGlobalStats();
+    pickNext();
+  });
+});
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+if (window.speechSynthesis) {
+  speechSynthesis.getVoices();
+  speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+}
+kanaEl.style.transition = 'opacity 0.18s, transform 0.18s';
+updateGlobalStats();
+pickNext();
+</script>
+</body>
+</html>
