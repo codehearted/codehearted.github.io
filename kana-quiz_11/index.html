@@ -1191,9 +1191,9 @@ let keys = {};
 let shipX = 0, shipY = 0, shipTargetX = 0, shipTargetY = 0;
 
 const DIFF = {
-  normal: { speed: 0.25, spawnMin: 2.5, spawnMax: 4.5, maxEnemies: 6 },
-  hard:   { speed: 0.45, spawnMin: 1.5, spawnMax: 2.8, maxEnemies: 9 },
-  insane: { speed: 0.75, spawnMin: 0.8, spawnMax: 1.8, maxEnemies: 14 },
+  normal: { speed: 0.10, spawnMin: 4.0, spawnMax: 6.5, maxEnemies: 6 },
+  hard:   { speed: 0.18, spawnMin: 2.5, spawnMax: 4.0, maxEnemies: 9 },
+  insane: { speed: 0.32, spawnMin: 1.2, spawnMax: 2.5, maxEnemies: 14 },
 };
 
 function initGame() {
@@ -1701,6 +1701,27 @@ document.getElementById('go-menu-btn').addEventListener('click', showMenu);
 // Keyboard
 window.addEventListener('keydown', e=>{ keys[e.key]=true; });
 window.addEventListener('keyup',   e=>{ keys[e.key]=false; });
+
+// Manual fire — click/tap canvas shoots nearest enemy and flags it
+document.getElementById('game-canvas').addEventListener('click', e => {
+  if (!gameRunning || !enemies.length) return;
+  // Find nearest enemy (highest z = closest)
+  const target = enemies.reduce((a,b) => a.position.z > b.position.z ? a : b);
+  fireLaser(target);
+  // Flag this kana as difficult in profile
+  const stats = getCurrentUserStats(profile);
+  if (!stats[target.userData.entry.k]) stats[target.userData.entry.k] = {seen:0,correct:0,incorrect:0,fonts:{},symStreak:0,flagged:false};
+  stats[target.userData.entry.k].flagged = true;
+  saveProfile(profile);
+  // Visual pulse on the sprite label
+  if (target.userData.sprite) {
+    target.userData.sprite.material.opacity = 0.4;
+    setTimeout(() => { if(target.userData.sprite) target.userData.sprite.material.opacity = 1; }, 200);
+  }
+  // Show feedback
+  const sttEl = document.getElementById('game-stt-feedback');
+  if (sttEl) { sttEl.textContent = '★ ' + target.userData.entry.k + ' flagged'; setTimeout(()=>{ if(sttEl) sttEl.textContent=''; }, 1000); }
+});
 
 // ═══════════════════════════════════════════════════════════
 // WHISPER HELPERS (shared between quiz and game)
