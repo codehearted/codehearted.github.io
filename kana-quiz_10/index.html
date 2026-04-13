@@ -263,6 +263,39 @@
   .gstat-label { font-size: 9px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px; }
   .gstat-num { font-size: 15px; font-weight: 500; color: var(--text-muted); }
   .gstat-num.warn { color: var(--red); }
+
+  /* ── streak progress bar ── */
+  #streak-bar-wrap {
+    width: 100%; margin-top: 6px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .streak-bar-track {
+    width: 80%; height: 4px; background: var(--border); border-radius: 2px; overflow: visible; position: relative;
+  }
+  #streak-bar-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    width: 0%;
+    transition: width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+  /* glow pulse on the fill bar tip */
+  #streak-bar-fill::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: -3px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--green);
+    opacity: 0;
+    transition: opacity 0.2s;
+    box-shadow: 0 0 8px 3px rgba(111,207,142,0.5);
+  }
+  #streak-bar-fill.has-streak::after { opacity: 1; }
+  #streak-label {
+    font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em;
+    transition: color 0.3s;
+  }
+  #streak-label.hot { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -332,6 +365,10 @@
     </div>
   </div>
 
+  <div id="streak-bar-wrap">
+    <div class="streak-bar-track"><div id="streak-bar-fill"></div></div>
+    <div id="streak-label">streak</div>
+  </div>
   <div class="score-actions">
     <button class="action-btn danger" id="clear-stats-btn">clear history</button>
     <button class="action-btn danger" id="reset-btn">reset session</button>
@@ -1232,6 +1269,26 @@ function weightedPick(pool) {
   return pool[pool.length - 1];
 }
 
+function updateStreakBar() {
+  const fill = document.getElementById('streak-bar-fill');
+  const label = document.getElementById('streak-label');
+  if (!fill || !label) return;
+  const MAX_STREAK = 10;
+  const pct = Math.min(100, (nStreak / MAX_STREAK) * 100);
+  fill.style.width = pct + '%';
+  fill.classList.toggle('has-streak', nStreak > 0);
+  if (nStreak === 0) {
+    label.textContent = 'streak';
+    label.className = '';
+  } else if (nStreak >= 5) {
+    label.textContent = '🔥 ' + nStreak + ' streak!';
+    label.className = 'hot';
+  } else {
+    label.textContent = nStreak + ' streak';
+    label.className = '';
+  }
+}
+
 function pickNext() {
   const pool = deck.filter(x => x !== current);
   current = weightedPick(pool);
@@ -1286,6 +1343,7 @@ function onWrong() {
   wrongCount++;
   nStreak = 0;
   setScore('score-streak', nStreak);
+  updateStreakBar();
   micBtn.className = 'wrong';
   kanaEl.classList.add('flash-wrong');
   setTimeout(() => kanaEl.classList.remove('flash-wrong'), 500);
@@ -1359,6 +1417,7 @@ function handleFinalResult(allTranscripts) {
     setScore('score-correct', nCorrect);
     setScore('score-streak', nStreak);
     updatePct();
+    updateStreakBar();
     micBtn.className = 'correct';
     feedEl.textContent = '正解！';
     feedEl.className = 'ok';
@@ -1372,7 +1431,7 @@ function handleFinalResult(allTranscripts) {
     setTimeout(() => {
       kanaEl.classList.remove('flash-correct');
       pickNext();
-    }, 1200);
+    }, 2000);
   } else {
     updatePct();
     onWrong();
@@ -1464,6 +1523,7 @@ resetBtn.addEventListener('click', () => {
   ['score-correct','score-streak','score-total'].forEach(id => setScore(id, 0));
   setScore('score-pct', '—');
   updateGlobalStats();
+  updateStreakBar();
 });
 
 clearBtn.addEventListener('click', () => {
@@ -1505,6 +1565,7 @@ if (window.speechSynthesis) {
 }
 kanaEl.style.transition = 'opacity 0.18s, transform 0.18s';
 updateGlobalStats();
+updateStreakBar();
 pickNext();
 </script>
 </body>
