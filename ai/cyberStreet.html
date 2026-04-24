@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberpunk City Street</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Courier New', monospace;
+        }
+        
+        #controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ffff;
+            padding: 20px;
+            z-index: 1000;
+            color: #00ffff;
+            min-width: 200px;
+        }
+        
+        #controls h3 {
+            margin: 0 0 15px 0;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: #111;
+            outline: none;
+            border-radius: 2px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            width: 16px;
+            height: 4px;
+            background: #00ffff;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+        
+        #info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff00ff;
+            padding: 15px;
+            z-index: 1000;
+            color: #ff00ff;
+            font-size: 12px;
+        }
+        
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <h3>Lighting Controls</h3>
+        <div class="control-group">
+            <label>Ambient Light</label>
+            <input type="range" id="ambientLight" min="0" max="100" value="30">
+        </div>
+        <div class="control-group">
+            <label>Neon Intensity</label>
+            <input type="range" id="neonIntensity" min="0" max="100" value="80">
+        </div>
+        <div class="control-group">
+            <label>Rain Density</label>
+            <input type="range" id="rainDensity" min="0" max="100" value="60">
+        </div>
+        <div class="control-group">
+            <label>Fog Density</label>
+            <input type="range" id="fogDensity" min="0" max="100" value="40">
+        </div>
+        <div class="control-group">
+            <label>Scene Brightness</label>
+            <input type="range" id="brightness" min="0" max="100" value="70">
+        </div>
+    </div>
+    
+    <div id="info">
+        <div>WASD to navigate</div>
+        <div>Move: W/A/S/D</div>
+        <div>Position: <span id="pos">0, 0, 0</span></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/128.0/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        scene.fog = new THREE.Fog(0x000000, 0, 100);
+        
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 2, 10);
+        
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.toneMapping = THREE.NoToneMapping;
+        renderer.toneMappingExposure = 1.5;
+        document.body.appendChild(renderer.domElement);
+        
+        // Lighting setup
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+        scene.add(ambientLight);
+        
+        // Street lights
+        const streetLights = [];
+        for (let i = 0; i < 10; i++) {
+            const light = new THREE.PointLight(0x00ffff, 1, 30);
+            light.position.set(0, 10, i * 20 - 100);
+            scene.add(light);
+            streetLights.push(light);
+        }
+        
+        // Building materials
+        const buildingMaterial = new THREE.MeshStandardMaterial({
+            color: 0x111111,
+            roughness: 0.8,
+            metalness: 0.3
+        });
+        
+        const glassMaterial = new THREE.MeshStandardMaterial({
+            color: 0x000000,
+            roughness: 0.1,
+            metalness: 0.8,
+            transparent: true,
+            opacity: 0.9
+        });
+        
+        const neonMaterial = new THREE.MeshStandardMaterial({
+            color: 0x00ffff,
+            emissive: 0x00ffff,
+            emissiveIntensity: 2,
+            roughness: 0.2,
+            metalness: 0.8
+        });
+        
+        // Street material
+        const streetMaterial = new THREE.MeshStandardMaterial({
+            color: 0x222222,
+            roughness: 0.9,
+            metalness: 0.1
+        });
+        
+        // Create buildings
+        const buildings = new THREE.Group();
+        scene.add(buildings);
+        
+        // Generate city layout
+        function createBuilding(x, z, width, height, depth) {
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const building = new THREE.Mesh(geometry, buildingMaterial);
+            building.position.set(x, height / 2, z);
+            buildings.add(building);
+            
+            // Add neon signs
+            if (Math.random() > 0.5) {
+                const neonSign = new THREE.Mesh(
+                    new THREE.BoxGeometry(width * 0.8, 1, 0.1),
+                    neonMaterial
+                );
+                neonSign.position.set(x, height - 2, z);
+                buildings.add(neonSign);
+            }
+            
+            // Add windows
+            for (let y = 5; y < height - 5; y += 10) {
+                for (let w = -width / 2 + 5; w < width / 2 - 5; w += 5) {
+                    const window = new THREE.Mesh(
+                        new THREE.BoxGeometry(3, 4, 0.1),
+                        glassMaterial
+                    );
+                    window.position.set(x + w, y, z);
+                    buildings.add(window);
+                }
+            }
+        }
+        
+        // Create street layout
+        function createStreet() {
+            // Road surface
+            const roadGeometry = new THREE.PlaneGeometry(200, 200);
+            const road = new THREE.Mesh(roadGeometry, streetMaterial);
+            road.rotation.x = -Math.PI / 2;
+            road.position.set(0, 0.1, 0);
+            scene.add(road);
+            
+            // Sidewalks
+            for (let side = -1; side <= 1; side += 2) {
+                const sidewalk = new THREE.Mesh(
+                    new THREE.BoxGeometry(200, 0.2, 10),
+                    buildingMaterial
+                );
+                sidewalk.position.set(0, 0.1, side * 20);
+                scene.add(sidewalk);
+            }
+        }
+        
+        // Rain system
+        const rainParticles = [];
+        const rainGeometry = new THREE.BufferGeometry();
+        const rainCount = 10000;
+        const rainPositions = new Float32Array(rainCount * 3);
+        
+        for (let i = 0; i < rainCount; i++) {
+            rainPositions[i * 3] = Math.random() * 200 - 100;
+            rainPositions[i * 3 + 1] = Math.random() * 100;
+            rainPositions[i * 3 + 2] = Math.random() * 200 - 100;
+        }
+        
+        rainGeometry.setAttribute('position', rainPositions);
+        
+        const rainMaterial = new THREE.PointsMaterial({
+            color: 0x00ffff,
+            size: 0.5,
+            transparent: true,
+            opacity: 0.6
+        });
+        
+        const rainSystem = new THREE.Points(rainGeometry, rainMaterial);
+        scene.add(rainSystem);
+        
+        // Create the scene
+        createStreet();
+        
+        // Generate buildings
+        for (let i = 0; i < 50; i++) {
+            const x = (Math.random() - 0.5) * 100;
+            const z = (Math.random() - 0.5) * 200;
+            const width = Math.random() * 10 + 5;
+            const height = Math.random() * 40 + 10;
+            const depth = Math.random() * 10 + 5;
+            
+            if (Math.abs(x) > 10) {
+                createBuilding(x, z, width, height, depth);
+            }
+        }
+        
+        // Neon signs
+        const neonSigns = new THREE.Group();
+        scene.add(neonSigns);
+        
+        for (let i = 0; i < 20; i++) {
+            const sign = new THREE.Mesh(
+                new THREE.BoxGeometry(Math.random() * 5 + 2, Math.random() * 3 + 1, 0.1),
+                new THREE.MeshStandardMaterial({
+                    color: Math.random() > 0.5 ? 0xff00ff : 0x00ffff,
+                    emissive: Math.random() > 0.5 ? 0xff00ff : 0x00ffff,
+                    emissiveIntensity: Math.random() * 2 + 1,
+                    roughness: 0.2,
+                    metalness: 0.8
+                })
+            );
+            sign.position.set(
+                (Math.random() - 0.5) * 100,
+                Math.random() * 20 + 5,
+                (Math.random() - 0.5) * 100
+            );
+            neonSigns.add(sign);
+        }
+        
+        // Rain animation
+        const rainData = new Float32Array(rainCount * 3);
+        for (let i = 0; i < rainCount; i++) {
+            rainData[i * 3] = Math.random() * 200 - 100;
+            rainData[i * 3 + 1] = Math.random() * 100;
+            rainData[i * 3 + 2] = Math.random() * 200 - 100;
+        }
+        
+        // Controls
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+        
+        // Animation loop
+        const clock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            
+            // Movement
+            const speed = 10 * delta;
+            const position = camera.position;
+            
+            if (keys['KeyW']) position.z -= speed;
+            if (keys['KeyS']) position.z += speed;
+            if (keys['KeyA']) position.x -= speed;
+            if (keys['KeyD']) position.x += speed;
+            
+            // Keep camera at street level
+            position.y = 2;
+            
+            camera.position.set(position.x, position.y, position.z);
+            
+            // Update rain
+            const rainPositions = rainSystem.geometry.attributes.position.array;
+            for (let i = 0; i < rainCount; i++) {
+                rainPositions[i * 3 + 1] -= 2;
+                if (rainPositions[i * 3 + 1] < 0) {
+                    rainPositions[i * 3] = Math.random() * 200 - 100;
+                    rainPositions[i * 3 + 1] = Math.random() * 100;
+                    rainPositions[i * 3 + 2] = Math.random() * 200 - 100;
+                }
+            }
+            rainSystem.geometry.attributes.position.needsUpdate = true;
+            
+            // Update neon intensity
+            const neonIntensity = parseInt(document.getElementById('neonIntensity').value) / 100;
+            neonSigns.children.forEach(sign => {
+                sign.material.emissiveIntensity = neonIntensity * 2;
+            });
+            
+            // Update rain density
+            const rainDensity = parseInt(document.getElementById('rainDensity').value) / 100;
+            rainMaterial.opacity = rainDensity * 0.6;
+            
+            // Update fog density
+            const fogDensity = parseInt(document.getElementById('fogDensity').value) / 100;
+            scene.fog.density = fogDensity;
+            
+            // Update brightness
+            const brightness = parseInt(document.getElementById('brightness').value) / 100;
+            ambientLight.intensity = brightness * 0.3;
+            streetLights.forEach(light => {
+                light.intensity = brightness * 1;
+            });
+            
+            // Update exposure
+            renderer.toneMappingExposure = brightness * 1.5;
+            
+            // Update position display
+            document.getElementById('pos').textContent = 
+                `${Math.round(position.x)}, ${Math.round(position.y)}, ${Math.round(position.z)}`;
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
+

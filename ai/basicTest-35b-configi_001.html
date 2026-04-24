@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cyber-Prism</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #050510; /* Dark background */
+        }
+    </style>
+</head>
+<body>
+
+<!-- Import Three.js from a reliable CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/172.0/three.min.js"></script>
+
+<script>
+    // 1. Setup the Scene, Camera, and Renderer
+    const scene = new THREE.Scene();
+    scene.background.setHex(0x050510); // Dark cyber-blue background
+    
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.z = 5;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // 2. Create the Geometry: A Cone (representing a prism)
+    const geometry = new THREE.ConeGeometry(2, 4, 32);
+    
+    // Material: MeshPhysicalMaterial with high metalness for that "cool" shiny look
+    const material = new THREE.MeshPhysicalMaterial({ 
+        color: 0xffffff, // White base
+        metalness: 1.0,  // Fully metallic for perfect reflections
+        roughness: 0.2,  // Smooth surface
+        clearcoat: 1.0   // Extra glossy layer
+    });
+
+    const prism = new THREE.Mesh(geometry, material);
+    scene.add(prism);
+
+    // 3. Lighting (Crucial for the "cool" factor)
+    const ambientLight = new THREE.AmbientLight(0x404040);
+    scene.add(ambientLight);
+
+    // Add two colored lights to create shifting gradients on the metal
+    const lightA = new THREE.PointLight(0xff00ff, 50, 10); // Magenta
+    lightA.position.set(3, 4, 2);
+    scene.add(lightA);
+
+    const lightB = new THREE.PointLight(0x00ffff, 50, 10); // Cyan
+    lightB.position.set(-3, -4, 2);
+    scene.add(lightB);
+
+    // 4. Animation Loop (The "Cool" part)
+    let time = 0;
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // Rotate the prism smoothly
+        prism.rotation.x += 0.01; 
+        prism.rotation.z += 0.02;
+
+        // Shift color dynamically based on time 
+        // (HSL: Hue changes over time, Saturation & Lightness stay high)
+        const hue = (time * 0.5) % 1; 
+        material.color.setHSL(hue, 1.0, 0.5);
+
+        // Move the lights slightly to create "shimmering"
+        lightA.position.x = Math.sin(time) * 5;
+        lightB.position.y = Math.cos(time) * 5;
+
+        time += 0.05;
+
+        renderer.render(scene, camera);
+    }
+
+    animate();
+</script>
+</body>
+</html>
+

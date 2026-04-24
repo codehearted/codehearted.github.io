@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Interactive 3D</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #111; font-family: monospace; }
+        canvas { display: block; }
+        
+        /* Loading Screen */
+        #loading-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            color: #fff;
+        }
+        #progress-bar {
+            width: 200px; height: 20px;
+            border: 2px solid #fff;
+            margin-top: 20px;
+        }
+        #progress-fill {
+            width: 0%; height: 100%; background: #00ff00;
+            transition: width 0.3s;
+        }
+        
+        /* Debug Output Box */
+        #debug-box {
+            position: absolute;
+            bottom: 10px; left: 10px;
+            color: lime;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            max-width: 300px;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        /* Instructions */
+        #instructions {
+            position: absolute;
+            top: 10px; right: 10px;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <h1>Loading 3D Scene...</h1>
+        <div id="progress-bar"><div id="progress-fill"></div></div>
+        <p id="load-text">Initializing...</p>
+    </div>
+
+    <!-- Debug Output -->
+    <div id="debug-box">
+        <p>Debug Output:</p>
+        <div id="debug-content"></div>
+    </div>
+
+    <!-- Instructions -->
+    <div id="instructions">
+        <b>Controls:</b><br>
+        Mouse: Rotate view<br>
+        Click: Jump object<br>
+        Space: Toggle Spin<br>
+        R: Reset
+    </div>
+
+    <!-- Three.js Script -->
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+        // --- Configuration & State ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111111);
+        scene.fog = new THREE.Fog(0x111111, 10, 50);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 2, 5);
+
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // --- Object Creation ---
+        const geometry = new THREE.IcosahedronGeometry(1.5, 0);
+        const material = new THREE.MeshStandardMaterial({ 
+            color: 0x00ff00, 
+            roughness: 0.5, 
+            metalness: 0.8 
+        });
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(5, 5, 5);
+        scene.add(pointLight);
+
+        // --- Audio System ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playSound(type) {
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'spin') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            } else if (type === 'jump') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            }
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+        }
+
+        // --- Interaction Logic ---
+        let mouseX = 0, mouseY = 0;
+        let isSpinning = true;
+        let targetY = 0; // For jump
+
+        // Mouse Handler
+        document.addEventListener('mousemove', (event) => {
+            // Normalize mouse position -1 to 1
+            mouseX = (event.clientX / window.innerWidth) - 0.5;
+            mouseY = (event.clientY / window.innerHeight) - 0.5;
+            
+            // Update camera based on mouse
+            camera.position.x = -mouseX * 10;
+            camera.position.y = 2 + (mouseY * 5);
+            
+            debugLog(`Mouse: X=${mouseX.toFixed(2)}, Y=${mouseY.toFixed(2)}`);
+        });
+
+        // Click Handler (Jump)
+        document.addEventListener('click', () => {
+            targetY = Math.random() * 3; // Random jump height
+            debugLog("Jump triggered!");
+            playSound('jump');
+        });
+
+        // Keyboard Handler
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                isSpinning = !isSpinning;
+                debugLog(`Spin: ${isSpinning ? 'ON' : 'OFF'}`);
+                playSound('spin');
+            } else if (event.code === 'KeyR') {
+                targetY = 0;
+                cube.rotation.set(0,0,0);
+                debugLog("Reset!");
+            });
+        });
+
+        // --- Loading Simulation ---
+        const loadScreen = document.getElementById('loading-screen');
+        const progressFill = document.getElementById('progress-fill');
+        const loadText = document.getElementById('load-text');
+
+        function simulateLoading() {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    loadText.innerText = "Ready!";
+                    progressFill.style.width = "100%";
+                    
+                    // Fade out loading screen
+                    setTimeout(() => {
+                        loadScreen.style.display = 'none';
+                        // Resume Audio Context (browser policy)
+                        if (audioCtx.state === 'suspended') audioCtx.resume();
+                    }, 500);
+                } else {
+                    progressFill.style.width = `${progress}%`;
+                    loadText.innerText = `Loading: ${progress.toFixed(0)}%`;
+                }
+            }, 200);
+        }
+
+        // --- Debug Logging ---
+        function debugLog(msg) {
+            const debugContent = document.getElementById('debug-content');
+            const p = document.createElement('p');
+            p.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            debugContent.prepend(p);
+            console.log(msg); // Also send to browser console
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Logic for movement
+            if (isSpinning) {
+                cube.rotation.x += 0.01;
+                cube.rotation.y += 0.01;
+            }
+
+            // Smooth jump animation (Lerp)
+            if (targetY > 0) {
+                cube.position.y += (targetY - cube.position.y) * 0.1;
+                // If close enough, reset target
+                if (Math.abs(targetY - cube.position.y) < 0.1) targetY = 0;
+            } else {
+                cube.position.y += (0 - cube.position.y) * 0.1;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // --- Init ---
+        simulateLoading();
+        animate();
+        
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
+

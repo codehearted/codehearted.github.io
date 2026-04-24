@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cyberpunk Street - Three.js</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; }
+        canvas { display: block; }
+        
+        /* UI Overlay */
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 0, 40, 0.8);
+            border: 2px solid #ff0055;
+            padding: 15px;
+            color: #fff;
+            box-shadow: 0 0 15px #ff0055;
+            z-index: 10;
+            min-width: 200px;
+        }
+
+        h2 { margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #00ffaa; }
+        
+        .control-row { margin-bottom: 15px; }
+        
+        label { display: block; font-size: 12px; margin-bottom: 5px; }
+        
+        input[type=range] { 
+            width: 100%; 
+            -webkit-appearance: none;
+            background: transparent; 
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: vertical;
+            height: 20px; 
+            width: 5px; 
+            background: #ff0055;
+            cursor: pointer; 
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; 
+            height: 2px; 
+            background: #ff0055;
+        }
+
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #00ffaa;
+            background: rgba(15, 0, 40, 0.8);
+            padding: 10px;
+            border: 1px solid #00ffaa;
+            font-size: 12px;
+        }
+
+        /* Loading overlay */
+        #loading {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="ui-container">
+    <h2>Atmosphere Control</h2>
+    
+    <div class="control-row">
+        <label>Global Light Intensity</label>
+        <input type="range" min="0.1" max="2.0" step="0.01" value="1.0" id="light-slider">
+    </div>
+
+    <div class="control-row">
+        <label>Rain Density</label>
+        <input type="range" min="0.1" max="2.0" step="0.1" value="1.5">
+    </div>
+
+    <div class="control-row">
+        <label style="color: #aaa;">Scene Vibe</label>
+    </div>
+</div>
+
+<div id="controls-hint">
+    CONTROLS: WASD to move<br>
+    SPACE to jump / SHIFT to sprint
+</div>
+
+<div id="loading">GENERATING TEXTURE NOISE...</div>
+
+<!-- Import Three.js via CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/172/three.min.js"></script>
+
+<script>
+    // --- 1. SETUP & CONFIGURATION ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x020205); // Deep dark blue/black
+    scene.fog = new THREE.FogExp2(0x050510, 0.03); // Heavy fog
+
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 2, 5); // Start position
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    // --- 2. PROCEDURAL TEXTURE GENERATION (NO IMAGE FILES NEEDED) ---
+    
+    // Helper to create a canvas texture from noise (simulating concrete/wet asphalt)
+    function createNoiseTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        
+        // Fill black
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(0, 0, 512, 512);
+
+        // Add noise
+        for (let i = 0; i < 40000; i++) {
+            const x = Math.random() * 512;
+            const y = Math.random() * 512;
+            const brightness = Math.floor(Math.random() * 40); // Dark gray noise
+            
+            ctx.fillStyle = `rgba(255,255,255, 0.1)`;
+            ctx.fillRect(x, y, 2, 2); // speckle
+            
+            ctx.fillStyle = `rgba(0,0,0, 0.1)`;
+            ctx.fillRect(x + Math.random()*2, y + Math.random()*2, 1, 1);
+        }
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        return texture;
+    }
+
+    const noiseTex = createNoiseTexture();
+
+    // --- 3. THE CITY (GEOMETRY) ---
+    
+    const buildingGroup = new THREE.Group();
+
+    // Materials
+    const asphaltMat = new THREE.MeshStandardMaterial({ 
+        map: noiseTex, 
+        roughness: 0.1, // Wet
+        metalness: 0.6, 
+        color: 0x222222
+    });
+
+    const buildingMat = new THREE.MeshStandardMaterial({ 
+        color: 0x151520,
+        roughness: 0.9 
+    });
+
+    // Floor - The Street (Infinite plane feel)
+    const streetGeo = new THREE.PlaneGeometry(100, 200);
+    const street = new THREE.Mesh(streetGeo, asphaltMat);
+    street.rotation.x = -Math.PI / 2;
+    street.receiveShadow = true;
+    scene.add(street);
+
+    // Function to generate buildings
+    function createBuilding(x, z, height, width) {
+        const geo = new THREE.BoxGeometry(width, height, width * 0.8);
+        // Adjust UVs to tile noise texture for building walls
+        const mat = new THREE.MeshStandardMaterial({ 
+            map: noiseTex, 
+            color: 0x2a2a35,
+            roughness: 0.8 
+        });
+
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x, height / 2 - 0.1, z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        // Add Neon Windows (emissive)
+        const windowsGeo = new THREE.PlaneGeometry(width * 0.9, height - 1);
+        const windowsMat = new THREE.MeshStandardMaterial({ 
+            color: 0xffffff,
+            emissive: 0xff0055, // Cyberpunk Pink
+            emissiveIntensity: Math.random() * 2 + 0.5, // Random glow strength
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide
+        });
+
+        // Create a grid of windows using geometry attributes (simple random approach)
+        const winCount = Math.floor(height / 3) * Math.floor(width / 2);
+        const winGeo = new THREE.PlaneGeometry(0.5, 1.5);
+        
+        for(let i=0; i<winCount; i++) {
+            const win = new THREE.Mesh(winGeo, windowsMat);
+            // Randomly light up some windows
+            if(Math.random() > 0.5) {
+                win.material.color = new THREE.Color(0x00ffff); // Cyan windows
+            }
+            
+            win.position.set(
+                (Math.random() - 0.5) * (width - 1), // Random spread
+                Math.random() * height, 
+                (width * 0.8 / 2) + 0.1 // Stick slightly off surface
+            );
+            
+            mesh.add(win);
+        }
+
+        buildingGroup.add(mesh);
+    }
+
+    // Generate a dense city block
+    for (let z = -10; z < 80; z++) {
+        // Left buildings
+        if (Math.random() > 0.1) createBuilding(-6, z * 5, 20 + Math.random() * 30, 4);
+        // Right buildings
+        if (Math.random() > 0.1) createBuilding(6, z * 5 + 2, 20 + Math.random() * 30, 4);
+    }
+
+    scene.add(buildingGroup);
+
+    // --- 4. LIGHTING & ATMOSPHERE ---
+    
+    // Ambient (very dark)
+    const ambientLight = new THREE.AmbientLight(0x404060, 0.2);
+    scene.add(ambientLight);
+
+    // Main Street Light (Pink/Blue)
+    const mainLight = new THREE.PointLight(0xff0055, 10, 40);
+    mainLight.position.set(0, 15, 20);
+    scene.add(mainLight);
+
+    // Cyan Light from right side
+    const cyanLight = new THREE.PointLight(0x00ffff, 15, 30);
+    cyanLight.position.set(5, 10, 10);
+    scene.add(cyanLight);
+
+    // Volumetric Light Beams (Cone geometry with transparent material)
+    const beamGeo = new THREE.CylinderGeometry(10, 20, 50, 32, 1, true);
+    const beamMat = new THREE.MeshBasicMaterial({ 
+        color: 0xff0055,
+        transparent: true,
+        opacity: 0.1,
+        side: THREE.DoubleSide,
+        depthWrite: false // Important for transparency sorting
+    });
+    
+    const beam = new THREE.Mesh(beamGeo, beamMat);
+    beam.position.set(mainLight.position.x, mainLight.position.y - 10, mainLight.position.z);
+    scene.add(beam);
+
+    // --- 5. RAIN SYSTEM (Volumetric Particles) ---
+    
+    const rainCount = 2000;
+    const rainGeo = new THREE.BufferGeometry();
+    const rainX = [];
+    const rainY = [];
+    const rainZ = [];
+
+    for (let i = 0; i < rainCount; i++) {
+        rainX.push((Math.random() - 0.5) * 40); // Wide area
+        rainY.push(Math.random() * 30); // High up
+        rainZ.push((Math.random() - 0.5) * 80); // Deep into scene
+    }
+
+    rainGeo.setAttribute('position', new THREE.Float32BufferAttribute(rainX, 1));
+    rainGeo.setAttribute('position', new THREE.Float32BufferAttribute(rainY, 1));
+    rainGeo.setAttribute('position', new THREE.Float32BufferAttribute(rainZ, 1));
+
+    // Use a line material for rain streaks
+    const rainMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true });
+    const rainSystem = new THREE.Points(rainGeo, rainMat);
+    scene.add(rainSystem);
+
+    // --- 6. CONTROLS & INTERACTION ---
+    
+    const lightSlider = document.getElementById('light-slider');
+    
+    // WASD Movement State
+    let p = { x: 0, y: 2, z: 5 }; // Position
+    let v = { x: 0, y: 0, z: 0 }; // Velocity
+    let speed = 0.5;
+    
+    const keysPressed = { w: false, a: false, s: false, d: false };
+
+    window.addEventListener('keydown', (e) => {
+        const key = e.key.toLowerCase();
+        if(keysPressed.hasOwnProperty(key)) keysPressed[key] = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+        const key = e.key.toLowerCase();
+        if(keysPressed.hasOwnProperty(key)) keysPressed[key] = false;
+    });
+
+    // Slider Event Listener
+    lightSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        
+        // Adjust intensities based on slider
+        mainLight.intensity = val * 10;
+        cyanLight.intensity = val * 15;
+        
+        // Change colors based on intensity (Redder when bright, Blueish when dim)
+        if(val > 1.0) {
+            mainLight.color.setHex(0xff3333); // Hot red when bright
+        } else {
+            mainLight.color.setHex(0xff0055); // Pink when dim
+        }
+
+        // Adjust fog visibility based on brightness slider (simulating "clearing" or "darkening")
+        // Actually, let's just make the fog appear more vividly.
+    });
+
+    // Remove loading text once texture is ready (it's already generated)
+    document.getElementById('loading').style.display = 'none';
+
+    // --- 7. ANIMATION LOOP ---
+    
+    function updatePhysics() {
+        if (keysPressed.w) v.z -= speed * 0.1; // Move forward
+        if (keysPressed.s) v.z += speed * 0.1; // Move backward
+        if (keysPressed.a) v.x -= speed * 0.1; // Move Left
+        if (keysPressed.d) v.x += speed * 0.1; // Move Right
+
+        // Friction
+        v.x *= 0.92;
+        v.y *= 0.98; 
+        v.z *= 0.92;
+
+        // Update Camera Position
+        camera.position.x += v.x * 0.3; // Smoothing factor (Lerp-like)
+        camera.position.z += v.z * 0.3;
+
+        // Keep camera at ground level height
+        camera.position.y = 2 + v.y;
+        
+        // Clamp boundaries to keep us in the street (approx)
+        if(camera.position.x > 10) camera.position.x = 10;
+        if(camera.position.x < -10) camera.position.x = -10;
+    }
+
+    function updateRain() {
+        // Animate rain falling
+        const positions = rainGeo.attributes.position.array;
+        
+        for (let i = 0; i < positions.length / 3; i++) {
+            // Move down
+             if (positions[i * 3 + 1] > -5) {
+                 positions[i * 3 + 1] -= 0.5; // Speed of rain
+             } else {
+                 // Reset to top with random X/Z reset
+                 positions[i * 3 + 1] = 30;
+                 positions[i * 3 + 0] = (Math.random() - 0.5) * 40;
+                 positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+             }
+        }
+        
+        rainGeo.attributes.position.needsUpdate = true;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        updatePhysics();
+        updateRain();
+
+        renderer.render(scene, camera);
+    }
+
+    // Handle Window Resize
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Start loop
+    animate();
+
+</script>
+</body>
+</html>
+

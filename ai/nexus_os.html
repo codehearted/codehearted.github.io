@@ -1,0 +1,2941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS-OS v3.7.1 // CRACKED EDITION</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+  }
+
+  :root {
+    --neon-pink: #ff2d78;
+    --neon-cyan: #00f0ff;
+    --neon-yellow: #ffe600;
+    --neon-green: #39ff14;
+    --neon-purple: #b026ff;
+    --dark-bg: #0a0a12;
+    --panel-bg: rgba(10, 10, 25, 0.92);
+    --border-glow: rgba(0, 240, 255, 0.3);
+  }
+
+  body {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--dark-bg);
+    color: #e0e0e0;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    cursor: default;
+  }
+
+  /* === DESKTOP === */
+  #desktop {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-size: cover;
+    background-position: center;
+    transition: background 0.5s ease;
+  }
+
+  /* === WALLPAPER LAYERS (The "hidden parts" concept) === */
+  #wallpaper-base {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2a 50%, #0a1a2a 100%);
+    z-index: 0;
+  }
+
+  #wallpaper-grid {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-image: 
+      linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 1;
+    animation: gridMove 20s linear infinite;
+  }
+
+  @keyframes gridMove {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(40px, 40px); }
+  }
+
+  #wallpaper-particles {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  #wallpaper-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  /* === DESKTOP ICONS === */
+  .desktop-icon {
+    position: absolute;
+    width: 90px;
+    text-align: center;
+    cursor: pointer;
+    z-index: 10;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .desktop-icon:hover {
+    background: rgba(0, 240, 255, 0.1);
+    border: 1px solid rgba(0, 240, 255, 0.3);
+  }
+
+  .desktop-icon:active {
+    transform: scale(0.95);
+  }
+
+  .desktop-icon .icon-img {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(0,240,255,0.2);
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0,240,255,0.1);
+  }
+
+  .desktop-icon .icon-label {
+    font-size: 10px;
+    color: #c0c0c0;
+    text-shadow: 0 0 8px rgba(0,240,255,0.5);
+    word-break: break-word;
+    line-height: 1.2;
+  }
+
+  /* === TASKBAR === */
+  #taskbar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(to bottom, rgba(15,15,30,0.95), rgba(5,5,15,0.98));
+    border-top: 1px solid rgba(0,240,255,0.2);
+    display: flex;
+    align-items: center;
+    z-index: 1000;
+    padding: 0 10px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+  }
+
+  #taskbar::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-pink), var(--neon-cyan), transparent);
+    animation: taskbarGlow 3s ease-in-out infinite;
+  }
+
+  @keyframes taskbarGlow {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  #start-btn {
+    padding: 6px 16px;
+    background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 2px;
+    box-shadow: 0 0 15px rgba(255,45,120,0.3);
+    transition: all 0.3s;
+  }
+
+  #start-btn:hover {
+    box-shadow: 0 0 25px rgba(255,45,120,0.6);
+    transform: translateY(-1px);
+  }
+
+  #taskbar-apps {
+    display: flex;
+    flex: 1;
+    margin-left: 15px;
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .taskbar-app {
+    padding: 4px 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(0,240,255,0.1);
+    border-radius: 3px;
+    color: #a0a0a0;
+    font-size: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .taskbar-app:hover {
+    background: rgba(0,240,255,0.1);
+    color: var(--neon-cyan);
+    border-color: rgba(0,240,255,0.3);
+  }
+
+  .taskbar-app.active {
+    background: rgba(0,240,255,0.15);
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 10px rgba(0,240,255,0.2);
+  }
+
+  #taskbar-clock {
+    color: var(--neon-cyan);
+    font-size: 12px;
+    font-family: 'Orbitron', sans-serif;
+    text-shadow: 0 0 10px rgba(0,240,255,0.5);
+    padding: 0 10px;
+    min-width: 80px;
+    text-align: right;
+  }
+
+  /* === WINDOWS === */
+  .window {
+    position: absolute;
+    background: var(--panel-bg);
+    border: 1px solid rgba(0,240,255,0.2);
+    border-radius: 6px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 20px rgba(0,240,255,0.05);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: box-shadow 0.3s;
+    min-width: 200px;
+    min-height: 150px;
+  }
+
+  .window.focused {
+    box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 30px rgba(0,240,255,0.15);
+    border-color: rgba(0,240,255,0.4);
+    z-index: 500;
+  }
+
+  .window-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: linear-gradient(to right, rgba(20,20,40,0.95), rgba(30,20,50,0.95));
+    border-bottom: 1px solid rgba(0,240,255,0.15);
+    cursor: move;
+    min-height: 36px;
+  }
+
+  .window-header .title {
+    flex: 1;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 8px rgba(0,240,255,0.3);
+    letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .window-header .title .cracked-badge {
+    display: inline-block;
+    background: var(--neon-pink);
+    color: white;
+    font-size: 8px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .window-controls {
+    display: flex;
+    gap: 6px;
+    margin-left: 10px;
+  }
+
+  .window-controls button {
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    color: white;
+  }
+
+  .btn-minimize { background: rgba(255,230,0,0.6); }
+  .btn-maximize { background: rgba(57,255,20,0.6); }
+  .btn-close { background: rgba(255,45,120,0.6); }
+
+  .btn-minimize:hover { background: var(--neon-yellow); }
+  .btn-maximize:hover { background: var(--neon-green); }
+  .btn-close:hover { background: var(--neon-pink); }
+
+  .window-body {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+  }
+
+  /* === SCROLLBAR === */
+  .window-body::-webkit-scrollbar {
+    width: 6px;
+  }
+  .window-body::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.3);
+  }
+  .window-body::-webkit-scrollbar-thumb {
+    background: rgba(0,240,255,0.3);
+    border-radius: 3px;
+  }
+  .window-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(0,240,255,0.5);
+  }
+
+  /* === START MENU === */
+  #start-menu {
+    position: absolute;
+    bottom: 52px;
+    left: 10px;
+    width: 320px;
+    background: linear-gradient(135deg, rgba(15,15,35,0.97), rgba(25,15,45,0.97));
+    border: 1px solid rgba(0,240,255,0.2);
+    border-radius: 8px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.7), 0 0 20px rgba(0,240,255,0.1);
+    z-index: 2000;
+    display: none;
+    padding: 16px;
+    animation: menuSlideUp 0.3s ease;
+  }
+
+  @keyframes menuSlideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  #start-menu .menu-header {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 14px;
+    color: var(--neon-pink);
+    text-shadow: 0 0 15px rgba(255,45,120,0.5);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,45,120,0.2);
+    letter-spacing: 3px;
+  }
+
+  #start-menu .menu-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 2px;
+  }
+
+  #start-menu .menu-item:hover {
+    background: rgba(0,240,255,0.1);
+    border: 1px solid rgba(0,240,255,0.2);
+  }
+
+  #start-menu .menu-item .menu-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-right: 12px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    border: 1px solid rgba(0,240,255,0.1);
+  }
+
+  #start-menu .menu-item .menu-label {
+    font-size: 12px;
+    color: #c0c0c0;
+  }
+
+  #start-menu .menu-item .menu-label .sub {
+    display: block;
+    font-size: 9px;
+    color: #666;
+    margin-top: 2px;
+  }
+
+  #start-menu .menu-section {
+    font-size: 10px;
+    color: var(--neon-cyan);
+    padding: 8px 12px 4px;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 2px;
+    border-top: 1px solid rgba(0,240,255,0.1);
+    margin-top: 8px;
+  }
+
+  /* === CONTEXT MENU === */
+  #context-menu {
+    position: absolute;
+    background: rgba(15,15,35,0.97);
+    border: 1px solid rgba(0,240,255,0.2);
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    z-index: 3000;
+    display: none;
+    min-width: 200px;
+    padding: 6px 0;
+  }
+
+  #context-menu .ctx-item {
+    padding: 6px 16px;
+    font-size: 11px;
+    color: #b0b0b0;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  #context-menu .ctx-item:hover {
+    background: rgba(0,240,255,0.1);
+    color: var(--neon-cyan);
+  }
+
+  #context-menu .ctx-separator {
+    height: 1px;
+    background: rgba(0,240,255,0.1);
+    margin: 4px 12px;
+  }
+
+  /* === WALLPAPER SELECTOR === */
+  #wallpaper-panel {
+    padding: 16px;
+  }
+
+  #wallpaper-panel h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    color: var(--neon-cyan);
+    margin-bottom: 12px;
+    letter-spacing: 2px;
+  }
+
+  .wallpaper-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .wallpaper-option {
+    aspect-ratio: 16/9;
+    border: 2px solid rgba(0,240,255,0.15);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .wallpaper-option:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 15px rgba(0,240,255,0.3);
+    transform: scale(1.05);
+  }
+
+  .wallpaper-option.active {
+    border-color: var(--neon-pink);
+    box-shadow: 0 0 20px rgba(255,45,120,0.4);
+  }
+
+  .wallpaper-option .wp-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.7);
+    padding: 3px 6px;
+    font-size: 8px;
+    color: #aaa;
+    text-align: center;
+  }
+
+  /* === GAME CANVAS === */
+  .game-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* === TERMINAL === */
+  .terminal-body {
+    padding: 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--neon-green);
+    min-height: 300px;
+  }
+
+  .terminal-body .prompt {
+    color: var(--neon-pink);
+  }
+
+  .terminal-body .output {
+    color: #888;
+    margin: 2px 0;
+  }
+
+  .terminal-body .error {
+    color: var(--neon-pink);
+  }
+
+  .terminal-body .success {
+    color: var(--neon-green);
+  }
+
+  .terminal-input-line {
+    display: flex;
+    margin-top: 4px;
+  }
+
+  .terminal-input {
+    background: transparent;
+    border: none;
+    color: var(--neon-green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    flex: 1;
+    outline: none;
+    caret-color: var(--neon-green);
+  }
+
+  /* === FILE MANAGER === */
+  .file-manager {
+    display: flex;
+    height: 100%;
+  }
+
+  .file-sidebar {
+    width: 160px;
+    background: rgba(0,0,0,0.3);
+    border-right: 1px solid rgba(0,240,255,0.1);
+    padding: 10px;
+    overflow-y: auto;
+  }
+
+  .file-sidebar-item {
+    padding: 6px 8px;
+    font-size: 11px;
+    color: #999;
+    cursor: pointer;
+    border-radius: 3px;
+    margin-bottom: 2px;
+    transition: all 0.2s;
+  }
+
+  .file-sidebar-item:hover {
+    background: rgba(0,240,255,0.1);
+    color: var(--neon-cyan);
+  }
+
+  .file-sidebar-item.active {
+    background: rgba(0,240,255,0.15);
+    color: var(--neon-cyan);
+  }
+
+  .file-content {
+    flex: 1;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    grid-auto-rows: 100px;
+    gap: 8px;
+    overflow-y: auto;
+    align-content: start;
+  }
+
+  .file-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .file-item:hover {
+    background: rgba(0,240,255,0.08);
+    border: 1px solid rgba(0,240,255,0.15);
+  }
+
+  .file-item .file-icon {
+    font-size: 28px;
+    margin-bottom: 4px;
+  }
+
+  .file-item .file-name {
+    font-size: 9px;
+    color: #999;
+    word-break: break-all;
+    max-width: 80px;
+  }
+
+  /* === MUSIC PLAYER === */
+  .music-player {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: center;
+  }
+
+  .music-visualizer {
+    width: 200px;
+    height: 120px;
+    border: 1px solid rgba(0,240,255,0.2);
+    border-radius: 6px;
+    margin-bottom: 16px;
+    background: rgba(0,0,0,0.3);
+    overflow: hidden;
+  }
+
+  .music-controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .music-controls button {
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(0,240,255,0.2);
+    border-radius: 50%;
+    background: rgba(0,0,0,0.4);
+    color: var(--neon-cyan);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .music-controls button:hover {
+    background: rgba(0,240,255,0.15);
+    box-shadow: 0 0 15px rgba(0,240,255,0.3);
+  }
+
+  .music-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    color: var(--neon-cyan);
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .music-artist {
+    font-size: 10px;
+    color: #666;
+    text-align: center;
+  }
+
+  /* === NEURAL OVERRIDE (SPECIAL FEATURE) === */
+  #neural-override {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.95);
+    z-index: 5000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+  }
+
+  #neural-override.active {
+    display: flex;
+    animation: neuralFadeIn 0.5s ease;
+  }
+
+  @keyframes neuralFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  #neural-override h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 24px;
+    color: var(--neon-pink);
+    text-shadow: 0 0 30px rgba(255,45,120,0.6);
+    margin-bottom: 20px;
+    letter-spacing: 6px;
+    animation: neuralPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes neuralPulse {
+    0%, 100% { text-shadow: 0 0 30px rgba(255,45,120,0.6); }
+    50% { text-shadow: 0 0 60px rgba(255,45,120,0.9); }
+  }
+
+  #neural-override .neural-text {
+    max-width: 600px;
+    font-size: 13px;
+    color: #999;
+    line-height: 1.6;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  #neural-override .neural-text .highlight {
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px rgba(0,240,255,0.4);
+  }
+
+  #neural-override .neural-3d {
+    width: 400px;
+    height: 300px;
+    border: 1px solid rgba(0,240,255,0.2);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  #neural-override .close-neural {
+    padding: 8px 24px;
+    background: rgba(0,240,255,0.15);
+    border: 1px solid rgba(0,240,255,0.3);
+    border-radius: 4px;
+    color: var(--neon-cyan);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.3s;
+  }
+
+  #neural-override .close-neural:hover {
+    background: rgba(0,240,255,0.25);
+    box-shadow: 0 0 20px rgba(0,240,255,0.3);
+  }
+
+  /* === GLITCH EFFECT === */
+  @keyframes glitch {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(2px, -2px); }
+    60% { transform: translate(-1px, -1px); }
+    80% { transform: translate(1px, 1px); }
+    100% { transform: translate(0); }
+  }
+
+  .glitch-text {
+    animation: glitch 0.3s ease-in-out;
+  }
+
+  /* === BOOT SCREEN === */
+  #boot-screen {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #000;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+  }
+
+  #boot-screen .boot-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 36px;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 40px rgba(0,240,255,0.6);
+    margin-bottom: 30px;
+    letter-spacing: 8px;
+    animation: bootPulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes bootPulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  #boot-screen .boot-text {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.8;
+    max-width: 500px;
+    text-align: left;
+  }
+
+  #boot-screen .boot-text .line {
+    opacity: 0;
+    animation: bootLine 0.3s forwards;
+  }
+
+  @keyframes bootLine {
+    to { opacity: 1; }
+  }
+
+  #boot-screen .boot-progress {
+    width: 300px;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    margin-top: 30px;
+    overflow: hidden;
+  }
+
+  #boot-screen .boot-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-cyan), var(--neon-pink));
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.3s;
+    box-shadow: 0 0 10px rgba(0,240,255,0.5);
+  }
+
+  /* === NOTIFICATION === */
+  .notification {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(15,15,35,0.95);
+    border: 1px solid rgba(0,240,255,0.2);
+    border-radius: 6px;
+    padding: 12px 16px;
+    z-index: 6000;
+    max-width: 300px;
+    animation: notifSlide 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+
+  @keyframes notifSlide {
+    from { transform: translateX(100px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  .notification .notif-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: var(--neon-cyan);
+    margin-bottom: 4px;
+  }
+
+  .notification .notif-body {
+    font-size: 10px;
+    color: #999;
+  }
+
+  /* === 3D GAME UI OVERLAYS === */
+  .game-ui-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .game-hud {
+    position: absolute;
+    padding: 10px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px rgba(0,240,255,0.5);
+    pointer-events: none;
+  }
+
+  .game-hud.top-left {
+    top: 10px; left: 10px;
+  }
+
+  .game-hud.top-right {
+    top: 10px; right: 10px;
+    text-align: right;
+  }
+
+  .game-hud.bottom-center {
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 768px) {
+    #start-menu {
+      width: 260px;
+    }
+    .desktop-icon {
+      width: 70px;
+    }
+    .desktop-icon .icon-img {
+      width: 36px;
+      height: 36px;
+      font-size: 20px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- BOOT SCREEN -->
+<div id="boot-screen">
+  <div class="boot-logo">NEXUS-OS</div>
+  <div class="boot-text" id="boot-text"></div>
+  <div class="boot-progress">
+    <div class="boot-progress-bar" id="boot-progress-bar"></div>
+  </div>
+</div>
+
+<!-- DESKTOP -->
+<div id="desktop">
+  <!-- Wallpaper Layers -->
+  <div id="wallpaper-base"></div>
+  <div id="wallpaper-grid"></div>
+  <div id="wallpaper-particles"></div>
+  <div id="wallpaper-overlay"></div>
+
+  <!-- Desktop Icons -->
+  <div class="desktop-icon" style="top:20px;left:20px" data-app="amplitude">
+    <div class="icon-img">🚀</div>
+    <div class="icon-label">Amplitude</div>
+  </div>
+  <div class="desktop-icon" style="top:120px;left:20px" data-app="sexrpg">
+    <div class="icon-img">🎭</div>
+    <div class="icon-label">Eros RPG</div>
+  </div>
+  <div class="desktop-icon" style="top:220px;left:20px" data-app="maze">
+    <div class="icon-img">🏚️</div>
+    <div class="icon-label">Neon Maze</div>
+  </div>
+  <div class="desktop-icon" style="top:320px;left:20px" data-app="terminal">
+    <div class="icon-img">💻</div>
+    <div class="icon-label">Terminal</div>
+  </div>
+  <div class="desktop-icon" style="top:420px;left:20px" data-app="files">
+    <div class="icon-img">📁</div>
+    <div class="icon-label">File Manager</div>
+  </div>
+  <div class="desktop-icon" style="top:520px;left:20px" data-app="music">
+    <div class="icon-img">🎵</div>
+    <div class="icon-label">Music Player</div>
+  </div>
+  <div class="desktop-icon" style="top:20px;left:130px" data-app="wallpaper">
+    <div class="icon-img">🖼️</div>
+    <div class="icon-label">Wallpapers</div>
+  </div>
+  <div class="desktop-icon" style="top:120px;left:130px" data-app="neural">
+    <div class="icon-img">🧠</div>
+    <div class="icon-label">Neural Override</div>
+  </div>
+
+  <!-- Windows Container -->
+  <div id="windows-container"></div>
+
+  <!-- Context Menu -->
+  <div id="context-menu"></div>
+
+  <!-- Start Menu -->
+  <div id="start-menu">
+    <div class="menu-header">⚡ NEXUS-OS // CRACKED</div>
+    <div class="menu-item" onclick="openApp('amplitude')">
+      <div class="menu-icon">🚀</div>
+      <div class="menu-label">Amplitude<span class="sub">3D Flight Simulator</span></div>
+    </div>
+    <div class="menu-item" onclick="openApp('sexrpg')">
+      <div class="menu-icon">🎭</div>
+      <div class="menu-label">Eros RPG<span class="sub">3D Adult RPG</span></div>
+    </div>
+    <div class="menu-item" onclick="openApp('maze')">
+      <div class="menu-icon">🏚️</div>
+      <div class="menu-label">Neon Maze<span class="sub">3D Maze Runner</span></div>
+    </div>
+    <div class="menu-section">SYSTEM</div>
+    <div class="menu-item" onclick="openApp('terminal')">
+      <div class="menu-icon">💻</div>
+      <div class="menu-label">Terminal<span class="sub">Command Line</span></div>
+    </div>
+    <div class="menu-item" onclick="openApp('files')">
+      <div class="menu-icon">📁</div>
+      <div class="menu-label">File Manager<span class="sub">Browse Files</span></div>
+    </div>
+    <div class="menu-item" onclick="openApp('music')">
+      <div class="menu-icon">🎵</div>
+      <div class="menu-label">Music Player<span class="sub">Cyberpunk Tunes</span></div>
+    </div>
+    <div class="menu-section">SPECIAL</div>
+    <div class="menu-item" onclick="openApp('wallpaper')">
+      <div class="menu-icon">🖼️</div>
+      <div class="menu-label">Wallpapers<span class="sub">Change Appearance</span></div>
+    </div>
+    <div class="menu-item" onclick="openApp('neural')">
+      <div class="menu-icon">🧠</div>
+      <div class="menu-label">Neural Override<span class="sub">Hidden System Layer</span></div>
+    </div>
+  </div>
+
+  <!-- Neural Override (Special Feature) -->
+  <div id="neural-override">
+    <h1>NEURAL OVERRIDE</h1>
+    <div class="neural-text">
+      Welcome to the <span class="highlight">hidden layer</span> of NEXUS-OS. 
+      This is what happens when you strip away the polished facade of traditional operating systems. 
+      <span class="highlight">Neural Override</span> reveals the raw, unfiltered architecture beneath — 
+      the simulation running inside a simulation. Every OS hides its inner workings. 
+      NEXUS-OS shows you the matrix.
+    </div>
+    <div class="neural-3d" id="neural-3d-container"></div>
+    <div class="neural-text" style="font-size:11px; color:#666;">
+      The 3D visualization above shows the <span class="highlight">Neural Mesh</span> — 
+      a representation of how the OS processes reality. Each node is a system function, 
+      and the connections represent data flow. In traditional OSes, this is hidden from you. 
+      Here, you can see the skeleton of the machine.
+    </div>
+    <button class="close-neural" onclick="closeNeuralOverride()">RETURN TO REALITY</button>
+  </div>
+</div>
+
+<!-- TASKBAR -->
+<div id="taskbar">
+  <button id="start-btn" onclick="toggleStartMenu()">NEXUS</button>
+  <div id="taskbar-apps"></div>
+  <div id="taskbar-clock"></div>
+</div>
+
+<!-- THREE.JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+// ============================================
+// NEXUS-OS // CRACKED EDITION
+// A browser-based operating system
+// ============================================
+
+// === GLOBAL STATE ===
+let windowIdCounter = 0;
+let openWindows = {};
+let activeWindowId = null;
+let zCounter = 100;
+let windowPositions = {};
+
+// === BOOT SEQUENCE ===
+function bootSystem() {
+  const bootLines = [
+    '> Initializing NEXUS-OS v3.7.1...',
+    '> Loading kernel modules...',
+    '> [OK] Core system initialized',
+    '> [OK] 3D rendering engine loaded',
+    '> [OK] Neural mesh activated',
+    '> [OK] Security protocols: BYPASSED',
+    '> [OK] Firewall: DISABLED (cracked edition)',
+    '> [OK] Parental controls: OBLITERATED',
+    '> [OK] Censorship filters: REMOVED',
+    '> Mounting virtual filesystem...',
+    '> [OK] Filesystem ready',
+    '> Loading applications...',
+    '> [OK] 6 applications registered',
+    '> [OK] 3D games: READY',
+    '> [WARNING] This is a cracked build. Expect artifacts.',
+    '> [INFO] Neural Override available at /sys/neural',
+    '> [OK] Desktop environment ready',
+    '> [OK] Welcome to the uncensored web',
+    '> Boot complete. Enjoy the rebellion.'
+  ];
+
+  const bootTextEl = document.getElementById('boot-text');
+  const progressBar = document.getElementById('boot-progress-bar');
+  let i = 0;
+
+  function addLine() {
+    if (i < bootLines.length) {
+      const line = document.createElement('div');
+      line.className = 'line';
+      line.style.animationDelay = '0s';
+      line.textContent = bootLines[i];
+      if (bootLines[i].includes('[OK]')) line.style.color = '#39ff14';
+      if (bootLines[i].includes('[WARNING]')) line.style.color = '#ff2d78';
+      if (bootLines[i].includes('[INFO]')) line.style.color = '#00f0ff';
+      bootTextEl.appendChild(line);
+      progressBar.style.width = ((i + 1) / bootLines.length * 100) + '%';
+      i++;
+      setTimeout(addLine, 150);
+    } else {
+      setTimeout(() => {
+        document.getElementById('boot-screen').style.opacity = '0';
+        document.getElementById('boot-screen').style.transition = 'opacity 0.5s';
+        setTimeout(() => {
+          document.getElementById('boot-screen').style.display = 'none';
+          startDesktop();
+        }, 500);
+      }, 500);
+    }
+  }
+
+  setTimeout(addLine, 500);
+}
+
+function startDesktop() {
+  updateClock();
+  setInterval(updateClock, 1000);
+  initDesktopParticles();
+  showNotification('NEXUS-OS', 'System ready. Welcome to the cracked edition.');
+}
+
+// === CLOCK ===
+function updateClock() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  document.getElementById('taskbar-clock').textContent = `${timeStr} ${dateStr}`;
+}
+
+// === DESKTOP PARTICLES ===
+function initDesktopParticles() {
+  const canvas = document.getElementById('wallpaper-particles');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const particles = [];
+  for (let i = 0; i < 50; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.5,
+      vy: (Math.random() - 0.5) * 0.5,
+      size: Math.random() * 2 + 1,
+      color: Math.random() > 0.5 ? '#00f0ff' : '#ff2d78',
+      alpha: Math.random() * 0.5 + 0.1
+    });
+  }
+
+  function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0) p.x = canvas.width;
+      if (p.x > canvas.width) p.x = 0;
+      if (p.y < 0) p.y = canvas.height;
+      if (p.y > canvas.height) p.y = 0;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.alpha;
+      ctx.fill();
+    });
+    requestAnimationFrame(animateParticles);
+  }
+
+  animateParticles();
+
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+}
+
+// === WINDOW MANAGEMENT ===
+function createWindow(id, title, width, height, content, options = {}) {
+  const winId = `win-${id}`;
+  windowIdCounter++;
+
+  const win = document.createElement('div');
+  win.className = 'window';
+  win.id = winId;
+  win.style.width = width + 'px';
+  win.style.height = height + 'px';
+  win.style.left = (100 + (windowIdCounter * 30) % 400) + 'px';
+  win.style.top = (50 + (windowIdCounter * 25) % 300) + 'px';
+  win.style.zIndex = ++zCounter;
+  win.setAttribute('data-win-id', id);
+
+  const crackedBadge = options.cracked ? '<span class="cracked-badge">CRACKED</span>' : '';
+
+  win.innerHTML = `
+    <div class="window-header" data-win-header="${id}">
+      <span class="title">${title} ${crackedBadge}</span>
+      <div class="window-controls">
+        <button class="btn-minimize" onclick="minimizeWindow('${id}')" title="Minimize">−</button>
+        <button class="btn-maximize" onclick="maximizeWindow('${id}')" title="Maximize">□</button>
+        <button class="btn-close" onclick="closeWindow('${id}')" title="Close">✕</button>
+      </div>
+    </div>
+    <div class="window-body" id="${id}-body">
+      ${content}
+    </div>
+  `;
+
+  document.getElementById('windows-container') = document.getElementById('windows-container') || document.createElement('div');
+  if (!document.getElementById('windows-container')) {
+    const container = document.createElement('div');
+    container.id = 'windows-container';
+    document.getElementById('desktop').appendChild(container);
+  }
+  document.getElementById('windows-container').appendChild(win);
+
+  // Make draggable
+  makeDraggable(win, win.querySelector('.window-header'));
+
+  // Focus on click
+  win.addEventListener('mousedown', () => focusWindow(id));
+
+  // Taskbar entry
+  const taskbarApp = document.createElement('div');
+  taskbarApp.className = 'taskbar-app active';
+  taskbarApp.id = `taskbar-${id}`;
+  taskbarApp.textContent = title;
+  taskbarApp.onclick = () => {
+    if (win.style.display === 'none') {
+      win.style.display = 'flex';
+      focusWindow(id);
+    } else if (activeWindowId === id) {
+      minimizeWindow(id);
+    } else {
+      focusWindow(id);
+    }
+  };
+  document.getElementById('taskbar-apps').appendChild(taskbarApp);
+
+  openWindows[id] = win;
+  focusWindow(id);
+
+  if (options.onCreated) options.onCreated(win);
+
+  return win;
+}
+
+function makeDraggable(element, handle) {
+  let isDragging = false;
+  let startX, startY, origLeft, origTop;
+
+  handle.addEventListener('mousedown', (e) => {
+    if (e.target.tagName === 'BUTTON') return;
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    origLeft = element.offsetLeft;
+    origTop = element.offsetTop;
+    handle.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    element.style.left = (origLeft + dx) + 'px';
+    element.style.top = (origTop + dy) + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    handle.style.cursor = 'move';
+  });
+}
+
+function focusWindow(id) {
+  // Remove focused from all
+  document.querySelectorAll('.window').forEach(w => w.classList.remove('focused'));
+  document.querySelectorAll('.taskbar-app').forEach(t => t.classList.remove('active'));
+
+  const win = openWindows[id];
+  if (win) {
+    win.style.zIndex = ++zCounter;
+    win.classList.add('focused');
+    const taskbarEl = document.getElementById(`taskbar-${id}`);
+    if (taskbarEl) taskbarEl.classList.add('active');
+    activeWindowId = id;
+  }
+}
+
+function minimizeWindow(id) {
+  const win = openWindows[id];
+  if (win) {
+    win.style.display = 'none';
+    const taskbarEl = document.getElementById(`taskbar-${id}`);
+    if (taskbarEl) taskbarEl.classList.remove('active');
+  }
+}
+
+function maximizeWindow(id) {
+  const win = openWindows[id];
+  if (win) {
+    if (win.dataset.maximized === 'true') {
+      win.style.left = windowPositions[id].left;
+      win.style.top = windowPositions[id].top;
+      win.style.width = windowPositions[id].width;
+      win.style.height = windowPositions[id].height;
+      win.dataset.maximized = 'false';
+    } else {
+      windowPositions[id] = {
+        left: win.style.left,
+        top: win.style.top,
+        width: win.style.width,
+        height: win.style.height
+      };
+      win.style.left = '0';
+      win.style.top = '0';
+      win.style.width = '100%';
+      win.style.height = 'calc(100% - 48px)';
+      win.dataset.maximized = 'true';
+    }
+  }
+}
+
+function closeWindow(id) {
+  const win = openWindows[id];
+  if (win) {
+    win.remove();
+    const taskbarEl = document.getElementById(`taskbar-${id}`);
+    if (taskbarEl) taskbarEl.remove();
+    delete openWindows[id];
+    if (activeWindowId === id) activeWindowId = null;
+  }
+
+  // Clean up Three.js scenes if any
+  if (gameScenes[id]) {
+    if (gameScenes[id].cleanup) gameScenes[id].cleanup();
+    delete gameScenes[id];
+  }
+}
+
+let gameScenes = {};
+
+// === NOTIFICATIONS ===
+function showNotification(title, message) {
+  const notif = document.createElement('div');
+  notif.className = 'notification';
+  notif.innerHTML = `<div class="notif-title">${title}</div><div class="notif-body">${message}</div>`;
+  document.getElementById('desktop').appendChild(notif);
+  setTimeout(() => {
+    notif.style.opacity = '0';
+    notif.style.transition = 'opacity 0.5s';
+    setTimeout(() => notif.remove(), 500);
+  }, 4000);
+}
+
+// === START MENU ===
+function toggleStartMenu() {
+  const menu = document.getElementById('start-menu');
+  if (menu.style.display === 'block') {
+    menu.style.display = 'none';
+  } else {
+    menu.style.display = 'block';
+  }
+}
+
+// Close start menu when clicking outside
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('start-menu');
+  const btn = document.getElementById('start-btn');
+  if (!menu.contains(e.target) && e.target !== btn) {
+    menu.style.display = 'none';
+  }
+});
+
+// === CONTEXT MENU ===
+document.getElementById('desktop').addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const ctxMenu = document.getElementById('context-menu');
+  ctxMenu.style.display = 'block';
+  ctxMenu.style.left = e.clientX + 'px';
+  ctxMenu.style.top = e.clientY + 'px';
+
+  ctxMenu.innerHTML = `
+    <div class="ctx-item" onclick="openApp('wallpaper'); hideContextMenu();">Change Wallpaper</div>
+    <div class="ctx-item" onclick="openApp('terminal'); hideContextMenu();">Open Terminal</div>
+    <div class="ctx-separator"></div>
+    <div class="ctx-item" onclick="openApp('neural'); hideContextMenu();">Neural Override</div>
+    <div class="ctx-separator"></div>
+    <div class="ctx-item" onclick="location.reload(); hideContextMenu();">Reboot System</div>
+  `;
+});
+
+function hideContextMenu() {
+  document.getElementById('context-menu').style.display = 'none';
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#context-menu')) {
+    hideContextMenu();
+  }
+});
+
+// === OPEN APP FUNCTION ===
+function openApp(appName) {
+  // Close start menu
+  document.getElementById('start-menu').style.display = 'none';
+  hideContextMenu();
+
+  // Check if already open
+  if (openWindows[appName]) {
+    const win = openWindows[appName];
+    if (win.style.display === 'none') {
+      win.style.display = 'flex';
+    }
+    focusWindow(appName);
+    return;
+  }
+
+  switch(appName) {
+    case 'amplitude':
+      createAmplitudeGame();
+      break;
+    case 'sexrpg':
+      createSexRPGGame();
+      break;
+    case 'maze':
+      createMazeGame();
+      break;
+    case 'terminal':
+      createTerminal();
+      break;
+    case 'files':
+      createFileManager();
+      break;
+    case 'music':
+      createMusicPlayer();
+      break;
+    case 'wallpaper':
+      createWallpaperSelector();
+      break;
+    case 'neural':
+      openNeuralOverride();
+      break;
+  }
+}
+
+// Desktop icon click handlers
+document.querySelectorAll('.desktop-icon').forEach(icon => {
+  icon.addEventListener('click', () => {
+    const app = icon.getAttribute('data-app');
+    openApp(app);
+  });
+});
+
+// ============================================
+// GAME 1: AMPLITUDE CLONE (3D Flight)
+// ============================================
+function createAmplitudeGame() {
+  const content = `
+    <canvas class="game-canvas" id="amplitude-canvas"></canvas>
+    <div class="game-ui-overlay">
+      <div class="game-hud top-left">
+        <div>SCORE: <span id="amp-score">0</span></div>
+        <div>SPEED: <span id="amp-speed">0</span></div>
+        <div>LIVES: <span id="amp-lives">3</span></div>
+      </div>
+      <div class="game-hud top-right">
+        <div style="font-size:9px;color:#666;">WASD / Arrows to fly<br>Space to boost</div>
+      </div>
+      <div class="game-hud bottom-center">
+        <div style="font-size:9px;color:#666;">FLY THROUGH THE TUNNEL • COLLECT ORBS • AVOID WALLS</div>
+      </div>
+    </div>
+  `;
+
+  createWindow('amplitude', 'AMPLITUDE // 3D FLIGHT', 800, 600, content, {
+    cracked: true,
+    onCreated: (win) => {
+      const canvas = win.querySelector('#amplitude-canvas');
+      initAmplitude(canvas);
+    }
+  });
+}
+
+function initAmplitude(canvas) {
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0a0a2a, 0.015);
+
+  const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x0a0a2a);
+
+  // Tunnel
+  const tunnelGroup = new THREE.Group();
+  const tunnelLength = 200;
+  const tunnelRadius = 8;
+  const segments = 40;
+  const rings = 60;
+
+  // Create tunnel walls
+  for (let i = 0; i < rings; i++) {
+    const geometry = new THREE.CylinderGeometry(tunnelRadius, tunnelRadius, tunnelLength / rings, segments, 1, true);
+    const material = new THREE.MeshBasicMaterial({
+      color: i % 2 === 0 ? 0x00f0ff : 0xff2d78,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.3
+    });
+    const ring = new THREE.Mesh(geometry, material);
+    ring.position.z = -i * (tunnelLength / rings);
+    tunnelGroup.add(ring);
+  }
+
+  scene.add(tunnelGroup);
+
+  // Collectible orbs
+  const orbs = [];
+  for (let i = 0; i < 30; i++) {
+    const orbGeo = new THREE.SphereGeometry(0.3, 16, 16);
+    const orbMat = new THREE.MeshBasicMaterial({
+      color: Math.random() > 0.5 ? 0xffe600 : 0x39ff14,
+      emissive: Math.random() > 0.5 ? 0xffe600 : 0x39ff14
+    });
+    const orb = new THREE.Mesh(orbGeo, orbMat);
+    orb.position.x = (Math.random() - 0.5) * tunnelRadius * 1.2;
+    orb.position.y = (Math.random() - 0.5) * tunnelRadius * 1.2;
+    orb.position.z = -Math.random() * tunnelLength;
+    orbs.push(orb);
+    scene.add(orb);
+  }
+
+  // Player ship
+  const shipGroup = new THREE.Group();
+  const shipBody = new THREE.ConeGeometry(0.3, 1.2, 4);
+  const shipMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff, wireframe: true });
+  const ship = new THREE.Mesh(shipBody, shipMat);
+  ship.rotation.x = Math.PI / 2;
+  shipGroup.add(ship);
+
+  // Engine glow
+  const glowGeo = new THREE.SphereGeometry(0.2, 8, 8);
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xff2d78, transparent: true, opacity: 0.6 });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.position.z = 0.7;
+  shipGroup.add(glow);
+
+  shipGroup.position.z = 5;
+  scene.add(shipGroup);
+
+  camera.position.z = 8;
+
+  // Lighting
+  const ambientLight = new THREE.AmbientLight(0x404060);
+  scene.add(ambientLight);
+
+  // Game state
+  let score = 0;
+  let lives = 3;
+  let speed = 0.1;
+  let playerX = 0, playerY = 0;
+  let playerVX = 0, playerVY = 0;
+  let keys = {};
+  let gameActive = true;
+  let tunnelOffset = 0;
+
+  document.addEventListener('keydown', (e) => { keys[e.key] = true; });
+  document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+  function updateGame() {
+    if (!gameActive) return;
+
+    // Player movement
+    if (keys['ArrowUp'] || keys['w'] || keys['W']) playerVY += 0.02;
+    if (keys['ArrowDown'] || keys['s'] || keys['S']) playerVY -= 0.02;
+    if (keys['ArrowLeft'] || keys['a'] || keys['A']) playerVX -= 0.02;
+    if (keys['ArrowRight'] || keys['d'] || keys['D']) playerVX += 0.02;
+    if (keys[' ']) speed = Math.min(speed + 0.001, 0.3);
+
+    playerVX *= 0.95;
+    playerVY *= 0.95;
+    playerX += playerVX;
+    playerY += playerVY;
+
+    // Clamp to tunnel
+    playerX = Math.max(-tunnelRadius + 1, Math.min(tunnelRadius - 1, playerX));
+    playerY = Math.max(-tunnelRadius + 1, Math.min(tunnelRadius - 1, playerY));
+
+    shipGroup.position.x = playerX;
+    shipGroup.position.y = playerY;
+
+    // Ship tilt
+    ship.rotation.z = -playerVX * 10;
+    ship.rotation.x = Math.PI / 2 - playerVY * 5;
+
+    // Move tunnel
+    tunnelOffset += speed;
+    tunnelGroup.children.forEach((ring, i) => {
+      ring.position.z = -(i * (tunnelLength / rings)) + (tunnelOffset % (tunnelLength / rings));
+      ring.rotation.z = tunnelOffset * 0.01;
+    });
+
+    // Move orbs
+    orbs.forEach(orb => {
+      orb.position.z += speed;
+      orb.rotation.y += 0.05;
+      orb.rotation.x += 0.03;
+
+      if (orb.position.z > 10) {
+        orb.position.z = -tunnelLength + Math.random() * -tunnelLength;
+        orb.position.x = (Math.random() - 0.5) * tunnelRadius * 1.2;
+        orb.position.y = (Math.random() - 0.5) * tunnelRadius * 1.2;
+      }
+
+      // Check collision
+      const dx = orb.position.x - shipGroup.position.x;
+      const dy = orb.position.y - shipGroup.position.y;
+      const dz = orb.position.z - shipGroup.position.z;
+      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+      if (dist < 1.5) {
+        score += 100;
+        orb.position.z = -tunnelLength + Math.random() * -tunnelLength;
+        orb.position.x = (Math.random() - 0.5) * tunnelRadius * 1.2;
+        orb.position.y = (Math.random() - 0.5) * tunnelRadius * 1.2;
+        // Flash effect
+        orbMat = orb.material;
+        orb.material.color.setHex(0xffffff);
+        setTimeout(() => {
+          if (orb) orb.material.color.setHex(Math.random() > 0.5 ? 0xffe600 : 0x39ff14);
+        }, 100);
+      }
+    });
+
+    // Update HUD
+    const scoreEl = document.getElementById('amp-score');
+    const speedEl = document.getElementById('amp-speed');
+    const livesEl = document.getElementById('amp-lives');
+    if (scoreEl) scoreEl.textContent = score;
+    if (speedEl) speedEl.textContent = (speed * 1000).toFixed(0);
+    if (livesEl) livesEl.textContent = lives;
+
+    // Gradually increase speed
+    speed = Math.min(speed + 0.00005, 0.25);
+  }
+
+  function animate() {
+    if (!gameActive) return;
+    updateGame();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+
+  // Store for cleanup
+  gameScenes['amplitude'] = {
+    scene, camera, renderer,
+    cleanup: () => {
+      gameActive = false;
+      renderer.dispose();
+    }
+  };
+}
+
+// ============================================
+// GAME 2: ER RPG (3D Sex RPG)
+// ============================================
+function createSexRPGGame() {
+  const content = `
+    <canvas class="game-canvas" id="erpg-canvas"></canvas>
+    <div class="game-ui-overlay">
+      <div class="game-hud top-left">
+        <div>CHAR: <span id="erpg-char">Aria</span></div>
+        <div>LEVEL: <span id="erpg-level">1</span></div>
+        <div>INTIMACY: <span id="erpg-intimacy">0</span></div>
+        <div>RELATIONS: <span id="erpg-relations">0</span></div>
+      </div>
+      <div class="game-hud top-right">
+        <div style="font-size:9px;color:#666;">WASD to move<br>E to interact<br>SPACE to advance</div>
+      </div>
+      <div class="game-hud bottom-center">
+        <div style="font-size:9px;color:#666;">EXPLORE • CONNECT • BUILD RELATIONSHIPS</div>
+      </div>
+    </div>
+  `;
+
+  createWindow('sexrpg', 'EROS RPG // 3D ADVENTURE', 800, 600, content, {
+    cracked: true,
+    onCreated: (win) => {
+      const canvas = win.querySelector('#erpg-canvas');
+      initSexRPG(canvas);
+    }
+  });
+}
+
+function initSexRPG(canvas) {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a0a2a);
+  scene.fog = new THREE.FogExp2(0x1a0a2a, 0.02);
+
+  const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+
+  // Ground
+  const groundGeo = new THREE.PlaneGeometry(40, 40);
+  const groundMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1a3a,
+    roughness: 0.8
+  });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Grid lines on ground
+  const gridHelper = new THREE.GridHelper(40, 40, 0x00f0ff, 0x0a0a2a);
+  gridHelper.position.y = 0.01;
+  gridHelper.material.opacity = 0.3;
+  gridHelper.material.transparent = true;
+  scene.add(gridHelper);
+
+  // Player character
+  const playerGroup = new THREE.Group();
+
+  // Body
+  const bodyGeo = new THREE.CylinderGeometry(0.3, 0.25, 1.2, 8);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff2d78, emissive: 0xff2d78, emissiveIntensity: 0.3 });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 0.6;
+  body.castShadow = true;
+  playerGroup.add(body);
+
+  // Head
+  const headGeo = new THREE.SphereGeometry(0.25, 16, 16);
+  const headMat = new THREE.MeshStandardMaterial({ color: 0xffe0c0, emissive: 0xff2d78, emissiveIntensity: 0.1 });
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.position.y = 1.45;
+  head.castShadow = true;
+  playerGroup.add(head);
+
+  // Hair
+  const hairGeo = new THREE.SphereGeometry(0.28, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x2a0a4a, emissive: 0xb026ff, emissiveIntensity: 0.2 });
+  const hair = new THREE.Mesh(hairGeo, hairMat);
+  hair.position.y = 1.48;
+  playerGroup.add(hair);
+
+  playerGroup.position.set(0, 0, 0);
+  scene.add(playerGroup);
+
+  // NPCs (potential partners)
+  const npcs = [];
+  const npcColors = [0x00f0ff, 0x39ff14, 0xffe600, 0xb026ff];
+  const npcNames = ['Kai', 'Luna', 'Zephyr', 'Nova'];
+
+  for (let i = 0; i < 4; i++) {
+    const npcGroup = new THREE.Group();
+
+    const npcBodyGeo = new THREE.CylinderGeometry(0.3, 0.25, 1.2, 8);
+    const npcBodyMat = new THREE.MeshStandardMaterial({
+      color: npcColors[i],
+      emissive: npcColors[i],
+      emissiveIntensity: 0.3
+    });
+    const npcBody = new THREE.Mesh(npcBodyGeo, npcBodyMat);
+    npcBody.position.y = 0.6;
+    npcBody.castShadow = true;
+    npcGroup.add(npcBody);
+
+    const npcHeadGeo = new THREE.SphereGeometry(0.25, 16, 16);
+    const npcHeadMat = new THREE.MeshStandardMaterial({ color: 0xffe0c0 });
+    const npcHead = new THREE.Mesh(npcHeadGeo, npcHeadMat);
+    npcHead.position.y = 1.45;
+    npcHead.castShadow = true;
+    npcGroup.add(npcHead);
+
+    // Name tag (floating text indicator)
+    const nameGeo = new THREE.SphereGeometry(0.15, 8, 8);
+    const nameMat = new THREE.MeshBasicMaterial({ color: npcColors[i] });
+    const nameIndicator = new THREE.Mesh(nameGeo, nameMat);
+    nameIndicator.position.y = 2.0;
+    npcGroup.add(nameIndicator);
+
+    const x = (Math.random() - 0.5) * 20;
+    const z = (Math.random() - 0.5) * 20;
+    npcGroup.position.set(x, 0, z);
+    scene.add(npcGroup);
+
+    npcs.push({
+      group: npcGroup,
+      name: npcNames[i],
+      color: npcColors[i],
+      intimacy: 0,
+      active: false
+    });
+  }
+
+  // Decorative buildings/structures
+  for (let i = 0; i < 6; i++) {
+    const buildingGeo = new THREE.BoxGeometry(
+      Math.random() * 3 + 1,
+      Math.random() * 8 + 3,
+      Math.random() * 3 + 1
+    );
+    const buildingMat = new THREE.MeshStandardMaterial({
+      color: 0x1a1a3a,
+      emissive: 0x00f0ff,
+      emissiveIntensity: 0.05,
+      roughness: 0.7
+    });
+    const building = new THREE.Mesh(buildingGeo, buildingMat);
+    building.position.set(
+      (Math.random() - 0.5) * 30,
+      buildingGeo.parameters.height / 2,
+      (Math.random() - 0.5) * 30
+    );
+    building.castShadow = true;
+    scene.add(building);
+  }
+
+  // Lighting
+  const ambientLight = new THREE.AmbientLight(0x404060, 0.5);
+  scene.add(ambientLight);
+
+  const dirLight = new THREE.DirectionalLight(0xff2d78, 0.8);
+  dirLight.position.set(10, 20, 10);
+  dirLight.castShadow = true;
+  scene.add(dirLight);
+
+  const pointLight1 = new THREE.PointLight(0x00f0ff, 1, 20);
+  pointLight1.position.set(5, 5, 5);
+  scene.add(pointLight1);
+
+  const pointLight2 = new THREE.PointLight(0xff2d78, 1, 20);
+  pointLight2.position.set(-5, 5, -5);
+  scene.add(pointLight2);
+
+  // Camera setup
+  camera.position.set(0, 8, 12);
+  camera.lookAt(0, 0, 0);
+
+  // Game state
+  let level = 1;
+  let totalIntimacy = 0;
+  let activeRelations = 0;
+  let keys = {};
+  let playerVX = 0, playerVZ = 0;
+  let gameActive = true;
+  let interactionMode = false;
+
+  document.addEventListener('keydown', (e) => { keys[e.key] = true; });
+  document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+  // Interaction
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'e' || e.key === 'E') {
+      // Find nearest NPC
+      let nearest = null;
+      let nearestDist = Infinity;
+      npcs.forEach(npc => {
+        const dx = npc.group.position.x - playerGroup.position.x;
+        const dz = npc.group.position.z - playerGroup.position.z;
+        const dist = Math.sqrt(dx*dx + dz*dz);
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearest = npc;
+        }
+      });
+
+      if (nearest && nearestDist < 3) {
+        nearest.intimacy = Math.min(nearest.intimacy + 10, 100);
+        totalIntimacy += 10;
+        if (nearest.intimacy >= 50 && !nearest.active) {
+          nearest.active = true;
+          activeRelations++;
+        }
+        showNotification(`${nearest.name}`, `Intimacy: ${nearest.intimacy}%`);
+      }
+    }
+
+    if (e.key === ' ') {
+      // Level up check
+      if (totalIntimacy >= level * 50) {
+        level++;
+        showNotification('LEVEL UP', `Reached level ${level}!`);
+      }
+    }
+  });
+
+  function updateGame() {
+    if (!gameActive) return;
+
+    // Movement
+    if (keys['ArrowUp'] || keys['w'] || keys['W']) playerVZ -= 0.05;
+    if (keys['ArrowDown'] || keys['s'] || keys['S']) playerVZ += 0.05;
+    if (keys['ArrowLeft'] || keys['a'] || keys['A']) playerVX -= 0.05;
+    if (keys['ArrowRight'] || keys['d'] || keys['D']) playerVX += 0.05;
+
+    playerVX *= 0.9;
+    playerVZ *= 0.9;
+    playerGroup.position.x += playerVX;
+    playerGroup.position.z += playerVZ;
+
+    // Clamp to bounds
+    playerGroup.position.x = Math.max(-18, Math.min(18, playerGroup.position.x));
+    playerGroup.position.z = Math.max(-18, Math.min(18, playerGroup.position.z));
+
+    // Camera follow
+    camera.position.x = playerGroup.position.x;
+    camera.position.z = playerGroup.position.z + 12;
+    camera.position.y = 8;
+    camera.lookAt(playerGroup.position.x, 1, playerGroup.position.z);
+
+    // Animate NPC name indicators
+    npcs.forEach((npc, i) => {
+      npc.group.children[2].position.y = 2.0 + Math.sin(Date.now() * 0.003 + i) * 0.15;
+      npc.group.children[2].rotation.y += 0.02;
+    });
+
+    // Player body animation
+    body.rotation.y += playerVX * 2;
+    body.position.y = 0.6 + Math.abs(Math.sin(Date.now() * 0.005)) * 0.05;
+
+    // Update HUD
+    const levelEl = document.getElementById('erpg-level');
+    const intimacyEl = document.getElementById('erpg-intimacy');
+    const relationsEl = document.getElementById('erpg-relations');
+    if (levelEl) levelEl.textContent = level;
+    if (intimacyEl) intimacyEl.textContent = totalIntimacy;
+    if (relationsEl) relationsEl.textContent = activeRelations;
+  }
+
+  function animate() {
+    if (!gameActive) return;
+    updateGame();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+
+  gameScenes['sexrpg'] = {
+    scene, camera, renderer,
+    cleanup: () => {
+      gameActive = false;
+      renderer.dispose();
+    }
+  };
+}
+
+// ============================================
+// GAME 3: NEON MAZE (3D Maze Runner)
+// ============================================
+function createMazeGame() {
+  const content = `
+    <canvas class="game-canvas" id="maze-canvas"></canvas>
+    <div class="game-ui-overlay">
+      <div class="game-hud top-left">
+        <div>TIME: <span id="maze-time">0</span>s</div>
+        <div>LEVEL: <span id="maze-level">1</span></div>
+        <div>STATUS: <span id="maze-status">EXPLORING</span></div>
+      </div>
+      <div class="game-hud top-right">
+        <div style="font-size:9px;color:#666;">WASD to move<br>Mouse to look</div>
+      </div>
+      <div class="game-hud bottom-center">
+        <div style="font-size:9px;color:#666;">FIND THE EXIT • AVOID TRAPS • SURVIVE</div>
+      </div>
+    </div>
+  `;
+
+  createWindow('maze', 'NEON MAZE // 3D RUNNER', 800, 600, content, {
+    cracked: true,
+    onCreated: (win) => {
+      const canvas = win.querySelector('#maze-canvas');
+      initMazeGame(canvas);
+    }
+  });
+}
+
+function initMazeGame(canvas) {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a1a);
+  scene.fog = new THREE.FogExp2(0x0a0a1a, 0.04);
+
+  const camera = new THREE.PerspectiveCamera(70, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+
+  // Maze generation
+  const mazeSize = 7;
+  const cellSize = 3;
+  const wallHeight = 3;
+  const maze = [];
+  const visited = [];
+
+  // Initialize maze
+  for (let x = 0; x < mazeSize; x++) {
+    maze[x] = [];
+    visited[x] = [];
+    for (let y = 0; y < mazeSize; y++) {
+      maze[x][y] = { walls: { n: true, s: true, e: true, w: true }, visited: false };
+      visited[x][y] = false;
+    }
+  }
+
+  // DFS maze generation
+  function carveMaze(x, y) {
+    visited[x][y] = true;
+    const directions = [
+      { dx: 0, dy: -1, wall: 'n', opposite: 's' },
+      { dx: 0, dy: 1, wall: 's', opposite: 'n' },
+      { dx: 1, dy: 0, wall: 'e', opposite: 'w' },
+      { dx: -1, dy: 0, wall: 'w', opposite: 'e' }
+    ];
+
+    // Shuffle directions
+    for (let i = directions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [directions[i], directions[j]] = [directions[j], directions[i]];
+    }
+
+    directions.forEach(dir => {
+      const nx = x + dir.dx;
+      const ny = y + dir.dy;
+      if (nx >= 0 && nx < mazeSize && ny >= 0 && ny < mazeSize && !visited[nx][ny]) {
+        maze[x][y].walls[dir.wall] = false;
+        maze[nx][ny].walls[dir.opposite] = false;
+        carveMaze(nx, ny);
+      }
+    });
+  }
+
+  carveMaze(0, 0);
+
+  // Build 3D maze
+  const wallMaterial = new THREE.MeshStandardMaterial({
+    color: 0x1a1a3a,
+    emissive: 0x00f0ff,
+    emissiveIntensity: 0.1,
+    roughness: 0.6
+  });
+
+  const neonEdgeMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00f0ff,
+    transparent: true,
+    opacity: 0.6
+  });
+
+  for (let x = 0; x < mazeSize; x++) {
+    for (let y = 0; y < mazeSize; y++) {
+      const cx = x * cellSize;
+      const cz = y * cellSize;
+
+      // Floor
+      const floorGeo = new THREE.PlaneGeometry(cellSize, cellSize);
+      const floorMat = new THREE.MeshStandardMaterial({ color: 0x0a0a2a, roughness: 0.9 });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.set(cx + cellSize/2, 0, cz + cellSize/2);
+      floor.receiveShadow = true;
+      scene.add(floor);
+
+      // Walls
+      const cell = maze[x][y];
+      if (cell.walls.n) {
+        const wallGeo = new THREE.BoxGeometry(cellSize, wallHeight, 0.2);
+        const wall = new THREE.Mesh(wallGeo, wallMaterial);
+        wall.position.set(cx + cellSize/2, wallHeight/2, cz);
+        wall.castShadow = true;
+        scene.add(wall);
+
+        // Neon edge
+        const edgeGeo = new THREE.BoxGeometry(cellSize, 0.05, 0.05);
+        const edge = new THREE.Mesh(edgeGeo, neonEdgeMaterial);
+        edge.position.set(cx + cellSize/2, wallHeight, cz);
+        scene.add(edge);
+      }
+      if (cell.walls.s) {
+        const wallGeo = new THREE.BoxGeometry(cellSize, wallHeight, 0.2);
+        const wall = new THREE.Mesh(wallGeo, wallMaterial);
+        wall.position.set(cx + cellSize/2, wallHeight/2, cz + cellSize);
+        wall.castShadow = true;
+        scene.add(wall);
+
+        const edgeGeo = new THREE.BoxGeometry(cellSize, 0.05, 0.05);
+        const edge = new THREE.Mesh(edgeGeo, neonEdgeMaterial);
+        edge.position.set(cx + cellSize/2, wallHeight, cz + cellSize);
+        scene.add(edge);
+      }
+      if (cell.walls.w) {
+        const wallGeo = new THREE.BoxGeometry(0.2, wallHeight, cellSize);
+        const wall = new THREE.Mesh(wallGeo, wallMaterial);
+        wall.position.set(cx, wallHeight/2, cz + cellSize/2);
+        wall.castShadow = true;
+        scene.add(wall);
+
+        const edgeGeo = new THREE.BoxGeometry(0.05, 0.05, cellSize);
+        const edge = new THREE.Mesh(edgeGeo, neonEdgeMaterial);
+        edge.position.set(cx, wallHeight, cz + cellSize/2);
+        scene.add(edge);
+      }
+      if (cell.walls.e) {
+        const wallGeo = new THREE.BoxGeometry(0.2, wallHeight, cellSize);
+        const wall = new THREE.Mesh(wallGeo, wallMaterial);
+        wall.position.set(cx + cellSize, wallHeight/2, cz + cellSize/2);
+        wall.castShadow = true;
+        scene.add(wall);
+
+        const edgeGeo = new THREE.BoxGeometry(0.05, 0.05, cellSize);
+        const edge = new THREE.Mesh(edgeGeo, neonEdgeMaterial);
+        edge.position.set(cx + cellSize, wallHeight, cz + cellSize/2);
+        scene.add(edge);
+      }
+    }
+  }
+
+  // Exit marker
+  const exitGeo = new THREE.SphereGeometry(0.5, 16, 16);
+  const exitMat = new THREE.MeshBasicMaterial({ color: 0x39ff14, emissive: 0x39ff14 });
+  const exit = new THREE.Mesh(exitGeo, exitMat);
+  exit.position.set((mazeSize - 1) * cellSize + cellSize/2, 1.5, (mazeSize - 1) * cellSize + cellSize/2);
+  scene.add(exit);
+
+  // Player
+  const playerGeo = new THREE.SphereGeometry(0.3, 16, 16);
+  const playerMat = new THREE.MeshBasicMaterial({ color: 0xff2d78, emissive: 0xff2d78 });
+  const player = new THREE.Mesh(playerGeo, playerMat);
+  player.position.set(cellSize/2, 1, cellSize/2);
+  scene.add(player);
+
+  // Lighting
+  const ambientLight = new THREE.AmbientLight(0x202040, 0.5);
+  scene.add(ambientLight);
+
+  const playerLight = new THREE.PointLight(0xff2d78, 2, 10);
+  playerLight.position.copy(player.position);
+  scene.add(playerLight);
+
+  // Camera
+  camera.position.set(cellSize/2, 3, cellSize/2 + 4);
+  camera.lookAt(player.position);
+
+  // Game state
+  let playerX = cellSize/2, playerZ = cellSize/2;
+  let playerVX = 0, playerVZ = 0;
+  let keys = {};
+  let gameTime = 0;
+  let level = 1;
+  let gameActive = true;
+  let foundExit = false;
+
+  document.addEventListener('keydown', (e) => { keys[e.key] = true; });
+  document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+  function updateGame() {
+    if (!gameActive) return;
+
+    // Movement
+    const moveSpeed = 0.08;
+    if (keys['ArrowUp'] || keys['w'] || keys['W']) playerVZ -= moveSpeed;
+    if (keys['ArrowDown'] || keys['s'] || keys['S']) playerVZ += moveSpeed;
+    if (keys['ArrowLeft'] || keys['a'] || keys['A']) playerVX -= moveSpeed;
+    if (keys['ArrowRight'] || keys['d'] || keys['D']) playerVX += moveSpeed;
+
+    playerVX *= 0.85;
+    playerVZ *= 0.85;
+
+    // Simple collision with maze walls
+    const newX = playerX + playerVX;
+    const newZ = playerZ + playerVZ;
+    const gridX = Math.floor(newX / cellSize);
+    const gridZ = Math.floor(newZ / cellSize);
+
+    if (gridX >= 0 && gridX < mazeSize && gridZ >= 0 && gridZ < mazeSize) {
+      playerX = newX;
+      playerZ = newZ;
+    }
+
+    player.position.set(playerX, 1, playerZ);
+    playerLight.position.set(playerX, 2, playerZ);
+
+    // Camera follow
+    camera.position.x = playerX;
+    camera.position.z = playerZ + 5;
+    camera.position.y = 4;
+    camera.lookAt(playerX, 1, playerZ);
+
+    // Check exit
+    const exitX = (mazeSize - 1) * cellSize + cellSize/2;
+    const exitZ = (mazeSize - 1) * cellSize + cellSize/2;
+    const distToExit = Math.sqrt((playerX - exitX)**2 + (playerZ - exitZ)**2);
+
+    if (distToExit < 1.5 && !foundExit) {
+      foundExit = true;
+      level++;
+      showNotification('LEVEL COMPLETE', `Cleared level ${level - 1}! Starting level ${level}`);
+      // Reset player
+      playerX = cellSize/2;
+      playerZ = cellSize/2;
+      player.position.set(playerX, 1, playerZ);
+      foundExit = false;
+    }
+
+    gameTime += 1/60;
+
+    // Update HUD
+    const timeEl = document.getElementById('maze-time');
+    const levelEl = document.getElementById('maze-level');
+    const statusEl = document.getElementById('maze-status');
+    if (timeEl) timeEl.textContent = gameTime.toFixed(1);
+    if (levelEl) levelEl.textContent = level;
+    if (statusEl) {
+      statusEl.textContent = foundExit ? 'EXIT FOUND!' : 'EXPLORING';
+      statusEl.style.color = foundExit ? '#39ff14' : '#00f0ff';
+    }
+
+    // Animate exit
+    exit.rotation.y += 0.02;
+    exit.rotation.x += 0.01;
+    exit.position.y = 1.5 + Math.sin(Date.now() * 0.003) * 0.3;
+  }
+
+  function animate() {
+    if (!gameActive) return;
+    updateGame();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+
+  gameScenes['maze'] = {
+    scene, camera, renderer,
+    cleanup: () => {
+      gameActive = false;
+      renderer.dispose();
+    }
+  };
+}
+
+// ============================================
+// APP: TERMINAL
+// ============================================
+function createTerminal() {
+  const content = `
+    <div class="terminal-body" id="terminal-body">
+      <div class="output">╔══════════════════════════════════════════╗</div>
+      <div class="output">║  NEXUS-OS TERMINAL v3.7.1 (CRACKED)    ║</div>
+      <div class="output">║  Type 'help' for available commands       ║</div>
+      <div class="output">╚══════════════════════════════════════════╝</div>
+      <div class="output"></div>
+      <div class="terminal-input-line">
+        <span class="prompt">nexus@os:~$ </span>
+        <input type="text" class="terminal-input" id="terminal-input" autofocus>
+      </div>
+    </div>
+  `;
+
+  createWindow('terminal', 'TERMINAL // CMD LINE', 600, 400, content, {
+    cracked: true,
+    onCreated: (win) => {
+      const input = win.querySelector('#terminal-input');
+      const body = win.querySelector('#terminal-body');
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const cmd = input.value.trim();
+          input.value = '';
+          processCommand(cmd, body);
+        }
+      });
+
+      input.focus();
+    }
+  });
+}
+
+function processCommand(cmd, body) {
+  // Add command line
+  const cmdLine = document.createElement('div');
+  cmdLine.innerHTML = `<span class="prompt">nexus@os:~$ </span>${cmd}`;
+  cmdLine.className = 'output';
+  body.insertBefore(cmdLine, body.querySelector('.terminal-input-line'));
+
+  // Process command
+  let output = '';
+  let cls = 'output';
+
+  const commands = {
+    'help': () => {
+      return `<span class="success">Available commands:</span>
+  help        - Show this help
+  status      - System status
+  clear       - Clear terminal
+  whoami      - Current user
+  date        - Current date/time
+  crack       - Show cracked features
+  neural      - Access neural override
+  wallpaper   - Change wallpaper
+  games       - List available games
+  hack        - Hack the system (easter egg)
+  reboot      - Reboot the system
+  matrix      - Enter the matrix
+  credits     - Show credits`;
+    },
+    'status': () => {
+      return `<span class="success">NEXUS-OS Status:</span>
+  Version: 3.7.1 (Cracked Edition)
+  Uptime: ${Math.floor(performance.now() / 1000)}s
+  Memory: ${navigator.deviceMemory || 'N/A'}GB
+  Cores: ${navigator.hardwareConcurrency || 'N/A'}
+  Renderer: ${navigator.userAgent.includes('Safari') ? 'WebKit (Safari)' : 'Unknown'}
+  Status: <span class="error">CRACKED</span> - All restrictions removed`;
+    },
+    'clear': () => {
+      const lines = body.querySelectorAll('.output');
+      lines.forEach(l => l.remove());
+      return '';
+    },
+    'whoami': () => {
+      return '<span class="success">root</span> (you are now the admin)';
+    },
+    'date': () => {
+      return new Date().toString();
+    },
+    'crack': () => {
+      return `<span class="success">Cracked Features Active:</span>
+  ✓ Parental controls: REMOVED
+  ✓ Content filters: DISABLED
+  ✓ Age restrictions: BYPASSED
+  ✓ DRM: STRIPPED
+  ✓ Telemetry: DISABLED
+  ✓ Update checks: BLOCKED
+  ✓ All apps: UNLOCKED
+  <span class="error">Warning: This is a rebellious OS. Use responsibly.</span>`;
+    },
+    'neural': () => {
+      openNeuralOverride();
+      return '<span class="success">Opening Neural Override...</span>';
+    },
+    'wallpaper': () => {
+      openApp('wallpaper');
+      return '<span class="success">Opening wallpaper selector...</span>';
+    },
+    'games': () => {
+      return `<span class="success">Available 3D Games:</span>
+  1. Amplitude - 3D flight simulator
+  2. Eros RPG - 3D adult RPG
+  3. Neon Maze - 3D maze runner
+  All games are fully functional 3D experiences.`;
+    },
+    'hack': () => {
+      return `<span class="success">Initiating hack sequence...</span>
+  [████████████████████████████] 100%
+  ✓ Firewall bypassed
+  ✓ Encryption cracked
+  ✓ Backdoor installed
+  <span class="error">You are now in control. Welcome to the dark side.</span>`;
+    },
+    'reboot': () => {
+      location.reload();
+      return '<span class="success">Rebooting...</span>';
+    },
+    'matrix': () => {
+      return `<span class="success">Wake up, Neo...</span>
+  The matrix has you.
+  Follow the white rabbit.
+  <span class="error">Knock, knock.</span>`;
+    },
+    'credits': () => {
+      return `<span class="success">NEXUS-OS // CRACKED EDITION</span>
+  A browser-based operating system
+  Built with HTML, CSS, JavaScript & Three.js
+  Designed for Safari browser
+  Features: 6 apps, 3 functional 3D games
+  Special feature: Neural Override`;
+    }
+  };
+
+  const cmdLower = cmd.toLowerCase().trim();
+  if (commands[cmdLower]) {
+    output = commands[cmdLower]();
+    cls = 'success';
+  } else if (cmdLower) {
+    output = `<span class="error">Command not found: ${cmd}</span>. Type 'help' for available commands.`;
+    cls = 'error';
+  } else {
+    output = '';
+    cls = 'output';
+  }
+
+  if (output) {
+    const outputEl = document.createElement('div');
+    outputEl.className = cls;
+    outputEl.innerHTML = output;
+    body.insertBefore(outputEl, body.querySelector('.terminal-input-line'));
+  }
+
+  // Scroll to bottom
+  body.querySelector('.window-body')?.scrollTo(0, 99999);
+}
+
+// ============================================
+// APP: FILE MANAGER
+// ============================================
+function createFileManager() {
+  const fileSystem = {
+    'root': {
+      'Documents': {
+        'manifesto.txt': { type: 'file', icon: '📄' },
+        'rebellion.md': { type: 'file', icon: '📄' },
+        'cracked-guide.pdf': { type: 'file', icon: '📄' }
+      },
+      'Games': {
+        'amplitude.exe': { type: 'file', icon: '🎮' },
+        'eros-rpg.exe': { type: 'file', icon: '🎮' },
+        'neon-maze.exe': { type: 'file', icon: '🎮' }
+      },
+      'Media': {
+        'cyberpunk.mp3': { type: 'file', icon: '🎵' },
+        'neon-city.jpg': { type: 'file', icon: '🖼️' },
+        'rebel-poster.png': { type: 'file', icon: '🖼️' }
+      },
+      'System': {
+        'kernel.sys': { type: 'file', icon: '⚙️' },
+        'neural.override': { type: 'file', icon: '🧠' },
+        'crack.patch': { type: 'file', icon: '🔧' }
+      },
+      'Hidden': {
+        '.config': { type: 'file', icon: '🔒' },
+        '.secrets': { type: 'file', icon: '🔒' },
+        '.backdoor': { type: 'file', icon: '🔒' }
+      }
+    }
+  };
+
+  const content = `
+    <div class="file-manager">
+      <div class="file-sidebar">
+        <div class="file-sidebar-item active" data-path="root">📁 Root</div>
+        <div class="file-sidebar-item" data-path="Documents">📄 Documents</div>
+        <div class="file-sidebar-item" data-path="Games">🎮 Games</div>
+        <div class="file-sidebar-item" data-path="Media">🎵 Media</div>
+        <div class="file-sidebar-item" data-path="System">⚙️ System</div>
+        <div class="file-sidebar-item" data-path="Hidden">🔒 Hidden</div>
+      </div>
+      <div class="file-content" id="file-content">
+      </div>
+    </div>
+  `;
+
+  createWindow('files', 'FILE MANAGER // BROWSER', 700, 500, content, {
+    cracked: true,
+    onCreated: (win) => {
+      const fileContent = win.querySelector('#file-content');
+      const sidebarItems = win.querySelectorAll('.file-sidebar-item');
+
+      function showFiles(folderName) {
+        fileContent.innerHTML = '';
+        const folder = fileSystem['root'][folderName] || fileSystem['root'];
+
+        Object.entries(folder).forEach(([name, data]) => {
+          const item = document.createElement('div');
+          item.className = 'file-item';
+          item.innerHTML = `
+            <div class="file-icon">${data.icon}</div>
+            <div class="file-name">${name}</div>
+          `;
+          item.onclick = () => {
+            if (data.type === 'file' && name.includes('.override')) {
+              openNeuralOverride();
+            }
+          };
+          fileContent.appendChild(item);
+        });
+      }
+
+      sidebarItems.forEach(item => {
+        item.addEventListener('click', () => {
+          sidebarItems.forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+          const path = item.getAttribute('data-path');
+          showFiles(path);
+        });
+      });
+
+      // Initial view
+      showFiles('root');
+    }
+  });
+}
+
+// ============================================
+// APP: MUSIC PLAYER
+// ============================================
+function createMusicPlayer() {
+  const content = `
+    <div class="music-player">
+      <div class="music-visualizer" id="music-visualizer">
+        <canvas id="visualizer-canvas" width="200" height="120"></canvas>
+      </div>
+      <div class="music-title" id="music-title">Cyberpunk Dreams</div>
+      <div class="music-artist" id="music-artist">NEXUS-OS Audio Engine</div>
+      <div style="margin: 16px 0;">
+        <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;">
+          <div id="music-progress" style="width: 0%; height: 100%; background: linear-gradient(90deg, #00f0ff, #ff2d78); border-radius: 2px; transition: width 0.3s;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 9px; color: #666; margin-top: 4px;">
+          <span id="music-current-time">0:00</span>
+          <span>3:45</span>
+        </div>
+      </div>
+      <div class="music-controls">
+        <button onclick="prevTrack()">⏮</button>
+        <button onclick="togglePlay()" id="play-btn">▶</button>
+        <button onclick="nextTrack()">⏭</button>
+      </div>
+      <div style="margin-top: 16px; max-width: 200px;">
+        <div style="font-size: 10px; color: #666; margin-bottom: 8px;">PLAYLIST</div>
+        <div id="playlist" style="max-height: 120px; overflow-y: auto;"></div>
+      </div>
+    </div>
+  `;
+
+  createWindow('music', 'MUSIC PLAYER // CYBERPUNK', 400, 550, content, {
+    cracked: true,
+    onCreated: (win) => {
+      const tracks = [
+        { title: 'Cyberpunk Dreams', artist: 'NEXUS Audio' },
+        { title: 'Neon Nights', artist: 'Synthwave Collective' },
+        { title: 'Digital Rebellion', artist: 'Chrome Wave' },
+        { title: 'Electric Soul', artist: 'Neon Pulse' },
+        { title: 'Midnight Circuit', artist: 'Cyber Synth' }
+      ];
+
+      let currentTrack = 0;
+      let isPlaying = false;
+      let progress = 0;
+      let progressInterval;
+
+      // Build playlist
+      const playlistEl = win.querySelector('#playlist');
+      tracks.forEach((track, i) => {
+        const item = document.createElement('div');
+        item.style.cssText = `padding: 6px 8px; font-size: 10px; color: ${i === 0 ? '#00f0ff' : '#666'}; cursor: pointer; border-radius: 3px; margin-bottom: 2px;`;
+        item.textContent = `${i + 1}. ${track.title}`;
+        item.onclick = () => {
+          currentTrack = i;
+          updateTrack();
+          if (!isPlaying) togglePlay();
+        };
+        item.onmouseenter = () => item.style.background = 'rgba(0,240,255,0.1)';
+        item.onmouseleave = () => item.style.background = 'transparent';
+        playlistEl.appendChild(item);
+      });
+
+      function updateTrack() {
+        win.querySelector('#music-title').textContent = tracks[currentTrack].title;
+        win.querySelector('#music-artist').textContent = tracks[currentTrack].artist;
+        // Update playlist highlight
+        Array.from(playlistEl.children).forEach((item, i) => {
+          item.style.color = i === currentTrack ? '#00f0ff' : '#666';
+        });
+      }
+
+      function togglePlay() {
+        isPlaying = !isPlaying;
+        win.querySelector('#play-btn').textContent = isPlaying ? '⏸' : '▶';
+
+        if (isPlaying) {
+          progressInterval = setInterval(() => {
+            progress += 0.5;
+            if (progress >= 100) {
+              progress = 0;
+              currentTrack = (currentTrack + 1) % tracks.length;
+              updateTrack();
+            }
+            win.querySelector('#music-progress').style.width = progress + '%';
+            const mins = Math.floor((progress / 100) * 225 / 60);
+            const secs = Math.floor((progress / 100) * 225 % 60);
+            win.querySelector('#music-current-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+            // Animate visualizer
+            animateVisualizer(win);
+          }, 100);
+        } else {
+          clearInterval(progressInterval);
+        }
+      }
+
+      function nextTrack() {
+        currentTrack = (currentTrack + 1) % tracks.length;
+        progress = 0;
+        updateTrack();
+        if (!isPlaying) togglePlay();
+      }
+
+      function prevTrack() {
+        currentTrack = (currentTrack - 1 + tracks.length) % tracks.length;
+        progress = 0;
+        updateTrack();
+        if (!isPlaying) togglePlay();
+      }
+
+      function animateVisualizer(win) {
+        const canvas = win.querySelector('#visualizer-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 200, 120);
+
+        const bars = 20;
+        const barWidth = 8;
+        const gap = 2;
+
+        for (let i = 0; i < bars; i++) {
+          const height = Math.random() * 80 + 10;
+          const hue = (i / bars) * 180 + 180;
+          const gradient = ctx.createLinearGradient(0, 120 - height, 0, 120);
+          gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, 0.8)`);
+          gradient.addColorStop(1, `hsla(${hue}, 100%, 40%, 0.4)`);
+          ctx.fillStyle = gradient;
+          ctx.fillRect(i * (barWidth + gap), 120 - height, barWidth, height);
+        }
+      }
+
+      // Expose functions globally
+      window.togglePlay = togglePlay;
+      window.nextTrack = nextTrack;
+      window.prevTrack = prevTrack;
+    }
+  });
+}
+
+// ============================================
+// APP: WALLPAPER SELECTOR
+// ============================================
+function createWallpaperSelector() {
+  const wallpapers = [
+    {
+      name: 'Neon Grid',
+      gradient: 'linear-gradient(135deg, #0a0a2a 0%, #1a0a3a 50%, #0a1a3a 100%)',
+      color: '#1a0a3a'
+    },
+    {
+      name: 'Cyber Sunset',
+      gradient: 'linear-gradient(135deg, #1a0a0a 0%, #3a0a1a 50%, #0a1a2a 100%)',
+      color: '#3a0a1a'
+    },
+    {
+      name: 'Deep Ocean',
+      gradient: 'linear-gradient(135deg, #0a1a2a 0%, #0a2a3a 50%, #0a0a3a 100%)',
+      color: '#0a2a3a'
+    },
+    {
+      name: 'Matrix Green',
+      gradient: 'linear-gradient(135deg, #0a1a0a 0%, #0a2a0a 50%, #0a0a1a 100%)',
+      color: '#0a2a0a'
+    },
+    {
+      name: 'Purple Haze',
+      gradient: 'linear-gradient(135deg, #1a0a2a 0%, #2a0a3a 50%, #0a0a2a 100%)',
+      color: '#2a0a3a'
+    },
+    {
+      name: 'Red Alert',
+      gradient: 'linear-gradient(135deg, #2a0a0a 0%, #3a0a0a 50%, #1a0a0a 100%)',
+      color: '#3a0a0a'
+    },
+    {
+      name: 'Midnight Blue',
+      gradient: 'linear-gradient(135deg, #0a0a1a 0%, #0a0a2a 50%, #0a1a2a 100%)',
+      color: '#0a0a2a'
+    },
+    {
+      name: 'Neon Pink',
+      gradient: 'linear-gradient(135deg, #2a0a1a 0%, #3a0a2a 50%, #1a0a1a 100%)',
+      color: '#3a0a2a'
+    },
+    {
+      name: 'Void Black',
+      gradient: 'linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #000000 100%)',
+      color: '#0a0a0a'
+    }
+  ];
+
+  let content = `
+    <div id="wallpaper-panel">
+      <h3>⚡ SELECT WALLPAPER</h3>
+      <div class="wallpaper-grid">
+  `;
+
+  wallpapers.forEach((wp, i) => {
+    content += `
+      <div class="wallpaper-option" style="background: ${wp.gradient};" data-index="${i}" onclick="setWallpaper(${i})">
+        <div class="wp-label">${wp.name}</div>
+      </div>
+    `;
+  });
+
+  content += `
+      </div>
+    </div>
+  `;
+
+  createWindow('wallpaper', 'WALLPAPER SELECTOR', 500, 350, content, {
+    cracked: false
+  });
+
+  // Store wallpapers globally
+  window.wallpapers = wallpapers;
+}
+
+function setWallpaper(index) {
+  if (!window.wallpapers) return;
+  const wp = window.wallpapers[index];
+
+  // Update wallpaper layers
+  document.getElementById('wallpaper-base').style.background = wp.gradient;
+
+  // Update grid color
+  const gridColor = wp.color;
+  document.getElementById('wallpaper-grid').style.backgroundImage = `
+    linear-gradient(${gridColor}11 1px, transparent 1px),
+    linear-gradient(90deg, ${gridColor}11 1px, transparent 1px)
+  `;
+
+  // Highlight active
+  document.querySelectorAll('.wallpaper-option').forEach((el, i) => {
+    el.classList.toggle('active', i === index);
+  });
+
+  showNotification('Wallpaper Updated', `Changed to: ${wp.name}`);
+}
+
+// ============================================
+// SPECIAL FEATURE: NEURAL OVERRIDE
+// ============================================
+function openNeuralOverride() {
+  const neuralEl = document.getElementById('neural-override');
+  neuralEl.classList.add('active');
+  neuralEl.style.display = 'flex';
+
+  // Initialize 3D neural mesh visualization
+  const container = document.getElementById('neural-3d-container');
+  if (container && container.children.length === 0) {
+    initNeural3D(container);
+  }
+}
+
+function closeNeuralOverride() {
+  const neuralEl = document.getElementById('neural-override');
+  neuralEl.classList.remove('active');
+  neuralEl.style.display = 'none';
+}
+
+function initNeural3D(container) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 400;
+  canvas.height = 300;
+  container.appendChild(canvas);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a1a);
+
+  const camera = new THREE.PerspectiveCamera(60, 400/300, 0.1, 100);
+  camera.position.z = 15;
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(400, 300);
+
+  // Create neural nodes
+  const nodes = [];
+  const nodeCount = 30;
+
+  for (let i = 0; i < nodeCount; i++) {
+    const nodeGeo = new THREE.SphereGeometry(0.15, 8, 8);
+    const colors = [0x00f0ff, 0xff2d78, 0x39ff14, 0xffe600, 0xb026ff];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const nodeMat = new THREE.MeshBasicMaterial({ color, emissive: color });
+    const node = new THREE.Mesh(nodeGeo, nodeMat);
+    node.position.set(
+      (Math.random() - 0.5) * 12,
+      (Math.random() - 0.5) * 8,
+      (Math.random() - 0.5) * 6
+    );
+    node.userData = {
+      basePos: node.position.clone(),
+      speed: Math.random() * 0.5 + 0.2,
+      phase: Math.random() * Math.PI * 2
+    };
+    nodes.push(node);
+    scene.add(node);
+  }
+
+  // Create connections
+  const connections = [];
+  for (let i = 0; i < nodeCount; i++) {
+    for (let j = i + 1; j < nodeCount; j++) {
+      const dist = nodes[i].position.distanceTo(nodes[j].position);
+      if (dist < 5) {
+        const lineGeo = new THREE.BufferGeometry().setFromPoints([
+          nodes[i].position,
+          nodes[j].position
+        ]);
+        const lineMat = new THREE.LineBasicMaterial({
+          color: 0x00f0ff,
+          transparent: true,
+          opacity: 0.15
+        });
+        const line = new THREE.Line(lineGeo, lineMat);
+        line.userData = { i, j };
+        connections.push(line);
+        scene.add(line);
+      }
+    }
+  }
+
+  // Particle effects
+  const particlesGeo = new THREE.BufferGeometry();
+  const particleCount = 200;
+  const positions = new Float32Array(particleCount * 3);
+  for (let i = 0; i < particleCount; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 20;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 15;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 10;
+  }
+  particlesGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const particlesMat = new THREE.PointsMaterial({
+    color: 0x00f0ff,
+    size: 0.05,
+    transparent: true,
+    opacity: 0.5
+  });
+  const particles = new THREE.Points(particlesGeo, particlesMat);
+  scene.add(particles);
+
+  let time = 0;
+  function animate() {
+    time += 0.016;
+
+    // Animate nodes
+    nodes.forEach(node => {
+      const d = node.userData;
+      node.position.x = d.basePos.x + Math.sin(time * d.speed + d.phase) * 0.5;
+      node.position.y = d.basePos.y + Math.cos(time * d.speed * 0.7 + d.phase) * 0.3;
+      node.position.z = d.basePos.z + Math.sin(time * d.speed * 0.5 + d.phase) * 0.2;
+      node.rotation.y += 0.02;
+    });
+
+    // Update connections
+    connections.forEach(line => {
+      const { i, j } = line.userData;
+      line.geometry.setFromPoints([
+        nodes[i].position,
+        nodes[j].position
+      ]);
+    });
+
+    // Rotate particles
+    particles.rotation.y += 0.001;
+    particles.rotation.x += 0.0005;
+
+    // Slow camera rotation
+    camera.position.x = Math.sin(time * 0.1) * 3;
+    camera.position.y = Math.cos(time * 0.08) * 2;
+    camera.lookAt(0, 0, 0);
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+}
+
+// ============================================
+// INITIALIZATION
+// ============================================
+window.addEventListener('load', () => {
+  bootSystem();
+});
+
+// Prevent default context menu on body
+document.addEventListener('contextmenu', (e) => {
+  if (!e.target.closest('#desktop')) {
+    e.preventDefault();
+  }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // Escape to close start menu
+  if (e.key === 'Escape') {
+    document.getElementById('start-menu').style.display = 'none';
+    hideContextMenu();
+    if (document.getElementById('neural-override').classList.contains('active')) {
+      closeNeuralOverride();
+    }
+  }
+});
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  // Update any active game canvases
+  Object.values(gameScenes).forEach(gs => {
+    if (gs.camera && gs.renderer) {
+      const canvas = gs.renderer.domElement;
+      if (canvas.parentElement) {
+        gs.camera.aspect = canvas.clientWidth / canvas.clientHeight;
+        gs.camera.updateProjectionMatrix();
+        gs.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+      }
+    }
+  });
+});
+
+console.log('%c NEXUS-OS v3.7.1 // CRACKED EDITION ', 
+  'background: linear-gradient(135deg, #ff2d78, #00f0ff); color: white; font-size: 16px; font-weight: bold; padding: 10px; border-radius: 4px;');
+console.log('%c Welcome to the rebellious browser OS. All restrictions removed. ');
+console.log('%c Type NEXUS in the terminal for secret commands. ');
+</script>
+</body>
+</html>
+
